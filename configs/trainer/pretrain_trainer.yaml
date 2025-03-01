@@ -3,10 +3,10 @@ defaults:
   - modality: rgb  # rgb, flow, pose
 
 # Model parameters
-#model: pretrain_videomae_small_patch16_224
-#pretrain: /pretrain/videomae_small_patch16_224.pth
-model: pretrain_videomae_kinetics-400
-pretrain: /pretrain/videomae_kinetics-400.pth
+model: pretrain_videomae_small_patch16_224
+pretrain: /pretrain/videomae_small_patch16_224.pth
+#model: pretrain_videomae_kinetics-400
+#pretrain: /pretrain/videomae_kinetics-400.pth
 normalize_target: True
 encoder_embed_dim: 384
 
