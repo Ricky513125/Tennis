@@ -274,7 +274,7 @@ class HybridVideoMAE(torch.utils.data.Dataset):
         with open(setting) as split_f:
             data = split_f.readlines()
             for line in data:
-                line_info = line.split(' ')
+                line_info = line.split(',')
                 # line format: video_path, video_duration, video_label
                 if len(line_info) < 2:
                     raise (RuntimeError(
