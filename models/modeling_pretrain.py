@@ -270,7 +270,7 @@ class PretrainVisionTransformer(nn.Module):
         encoder_num_heads=12,
         decoder_num_classes=1536,  # decoder_num_classes=768,
         decoder_embed_dim=512,
-        decoder_depth=8,
+        # decoder_depth=8,
         decoder_num_heads=8,
         mlp_ratio=4.0,
         qkv_bias=False,
