@@ -261,7 +261,7 @@ def get_model(args):
         drop_block_rate=None,
         all_frames=args.num_frames,
         tubelet_size=args.tubelet_size,
-        decoder_depth=args.decoder_depth,
+        # decoder_depth=args.decoder_depth,
         with_cp=args.with_checkpoint)
 
     if version.parse(torch.__version__) > version.parse('1.13.1'):
