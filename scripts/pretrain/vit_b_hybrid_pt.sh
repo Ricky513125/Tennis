@@ -66,7 +66,7 @@ srun -p $PARTITION \
         --decoder_mask_ratio 0.5 \
         --model pretrain_videomae_base_patch16_224 \
         --decoder_depth 4 \
-        --batch_size 32 \
+        --batch_size 2 \
         --num_sample 4 \
         --num_frames 16 \
         --sampling_rate 4 \
