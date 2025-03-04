@@ -70,7 +70,7 @@ srun -p $PARTITION \
         --num_sample 4 \
         --num_frames 16 \
         --sampling_rate 4 \
-        --num_workers 10 \
+        --num_workers 1 \
         --lr 1e-3 \
         --opt adamw \
         --opt_betas 0.9 0.95 \
