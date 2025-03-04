@@ -256,7 +256,7 @@ def get_model(args):
     print(f"Creating model: {args.model}")
     model = create_model(
         args.model,
-        # pretrained=False, # base 函数没有这个参数
+        pretrained=False, # base 函数没有这个参数
         drop_path_rate=args.drop_path,
         drop_block_rate=None,
         all_frames=args.num_frames,
