@@ -289,6 +289,8 @@ class PretrainVisionTransformer(nn.Module):
         use_mean_pooling=True,
         num_classes_action=204,
         pretrained=False,
+        all_frames=16,
+        with_cp=True
     ):
         super().__init__()
         self.encoder = PretrainVisionTransformerEncoder(
