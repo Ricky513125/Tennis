@@ -4,7 +4,7 @@ defaults:
 
 # Model parameters
 model: VideoMAE_ViT-B_1600
-pretrain: /mnt/ssd2/lingyu/Tennis/ckpt/VideoMAE_ViT-B_1600
+pretrain: /mnt/ssd2/lingyu/Tennis/ckpt/VideoMAE_ViT-B_1600.pth
 #model: pretrain_videomae_kinetics-400
 #pretrain: /pretrain/videomae_kinetics-400.pth
 normalize_target: True
