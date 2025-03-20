@@ -1,7 +1,7 @@
 defaults:
   - _self_
-  - modality: rgb  # rgb, flow, pose
-  - dataset: epic  # epic, meccano, wear
+  - modality: pose  # rgb, flow, pose
+  - dataset: tennis  # epic, meccano, wear
 
 # Augmentation parameters
 color_jitter: 0.0
@@ -16,9 +16,9 @@ mask_ratio: 0.9
 # Ego4D
 #source_data_dir: /data/ego4d_data/v1
 #source_json_path: /cdfsl/source/ego4d/annotations/ego4d_train.json
-source_data_dir: /mnt/ssd2/lingyu/Tennis/vid_frames_224
-source_json_path: /mnt/ssd2/lingyu/Tennis/train.json
-source_sampling_rate: 4
+#source_data_dir: /mnt/ssd2/lingyu/Tennis/vid_frames_224
+#source_json_path: /mnt/ssd2/lingyu/Tennis/train.json
+#source_sampling_rate: 4
 
 # Delete video
 
