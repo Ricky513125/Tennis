@@ -441,7 +441,7 @@ def pretrain_videomae_small_patch16_224(
                 pretrained_dict[k] = v
         model_dict = model.state_dict()
         model_dict.update(pretrained_dict)
-        model.load_state_dict(model_dict)
+        model.load_state_dict(model_dict, strict=False)  # add strict=False to ignore unmatching layer
     return model
 
 
