@@ -36,12 +36,12 @@ class UnlabelCombinedPretrainDataModule(pl.LightningDataModule):
         if stage == "fit" or stage is None:
             # 这里可能需要检查 transform_train 是否正确赋值
             self.transform_train = self.get_train_transforms()
-            self.train_dataset = Ego4DUnlabelCombinedDataset(
-                self.data_module_cfg,
-                self.transform_train,
-                self.mask_gen,
-                mode=self.mode,
-            )
+            # self.train_dataset = Ego4DUnlabelCombinedDataset(
+            #     self.data_module_cfg,
+            #     self.transform_train,
+            #     self.mask_gen,
+            #     mode=self.mode,
+            # )
 
 
     def train_dataloader(self):
