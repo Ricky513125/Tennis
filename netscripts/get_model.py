@@ -17,7 +17,7 @@ def get_model(cfg, ckpt_pth=None, input_size=224, patch_size=16, in_chans=None):
     print(f"Creating model: {cfg.trainer.model}")
     if cfg.trainer.model.split("_")[0] == "VideoMAE":
         func = VideoMAE_ViT_B_1600
-        if cfg.data_module.modality.mode == "RGB":
+        if cfg.data_module.modality.mode == "rgb":
             assert cfg.trainer.modality.in_chans == 3
             assert cfg.trainer.pretrain is not None
         elif cfg.data_module.modality.mode == "flow":
