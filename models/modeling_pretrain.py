@@ -473,7 +473,7 @@ def pretrain_videomae_base_patch16_224(ckpt_pth=None, **kwargs):
 @register_model
 def VideoMAE_ViT_B_1600(ckpt_pth=None, **kwargs):
     model = PretrainVisionTransformer(
-        img_size=224,
+        img_size=_cfg.get("img_size", 224),
         patch_size=16,
         encoder_embed_dim=768,
         encoder_depth=12,
