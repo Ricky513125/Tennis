@@ -46,7 +46,7 @@ class UnlabelCombinedPretrainDataModule(pl.LightningDataModule):
 
     def train_dataloader(self):
         return DataLoader(
-            self.train_dataset,
+            # self.train_dataset,
             batch_size=self.cfg.batch_size,
             shuffle=True,
             num_workers=self.cfg.num_workers,
