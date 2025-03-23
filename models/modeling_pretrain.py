@@ -18,14 +18,6 @@ def trunc_normal_(tensor, mean=0.0, std=1.0):
     __call_trunc_normal_(tensor, mean=mean, std=std, a=-std, b=std)
 
 
-__all__ = [
-    "pretrain_videomae_small_patch16_224",
-    "pretrain_videomae_base_patch16_224",
-    "pretrain_videomae_large_patch16_224",
-    "pretrain_videomae_huge_patch16_224",
-]
-
-
 class PretrainVisionTransformerEncoder(nn.Module):
     """Vision Transformer with support for patch or hybrid CNN input stage"""
 
@@ -392,95 +384,44 @@ class PretrainVisionTransformer(nn.Module):
         return x, logits
 
 
-@register_model
-def pretrain_videomae_small_patch16_224(
-    ckpt_pth=None,
-    img_size=224,
-    patch_size=16,
-    in_chans=3,
-    decoder_num_classes=1536,
-    num_classes_action=204,
-    use_mean_pooling=True,
-    **kwargs
-):
-    model = PretrainVisionTransformer(
-        img_size=img_size,
-        patch_size=patch_size,
-        encoder_in_chans=in_chans,
-        encoder_embed_dim=384,
-        encoder_depth=12,
-        encoder_num_heads=6,
-        encoder_num_classes=0,
-        decoder_num_classes=decoder_num_classes,
-        decoder_embed_dim=192,
-        decoder_depth=4,
-        decoder_num_heads=3,
-        mlp_ratio=4,
-        qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6),
-        num_classes_action=num_classes_action,
-        use_mean_pooling=use_mean_pooling,
-        **kwargs
-    )
-    model.default_cfg = _cfg()
-    if ckpt_pth is not None:
-        p = torch.load(ckpt_pth)
-        od = p["model"]
-        pretrained_dict = {}
-        for k, v in od.items():
-            if ("encoder." in k and "patch_embed." in k) or (
-                "decoder." in k and "head." in k
-            ):
-                # RGB
-                if in_chans == 3:
-                    pretrained_dict[k] = v
-                # flow or pose
-                else:
-                    pass
-            else:
-                pretrained_dict[k] = v
-        model_dict = model.state_dict()
-        model_dict.update(pretrained_dict)
-        model.load_state_dict(model_dict, strict=False)  # add strict=False to ignore unmatching layer
-    return model
 
+# @register_model
+# def VideoMAE_ViT_B_1600(ckpt_pth=None, **kwargs):
+#     model = PretrainVisionTransformer(
+#         # img_size=_cfg["inputsize"][1],
+#         # patch_size=16,
+#         encoder_embed_dim=1024, # 768
+#         encoder_depth=12,
+#         encoder_num_heads=12,
+#         encoder_num_classes=0,
+#         # decoder_num_classes=1536,
+#         decoder_embed_dim=512, # 384
+#         decoder_depth=4,
+#         decoder_num_heads=6,
+#         mlp_ratio=4,
+#         qkv_bias=True,
+#         norm_layer=partial(nn.LayerNorm, eps=1e-6),
+#         **kwargs
+#     )
+#     model.default_cfg = _cfg()
+#     if ckpt_pth is not None:
+#         p = torch.load(ckpt_pth)
+#         if "state_dict" in p:
+#             state_dict = p["state_dict"]
+#         elif "model" in p:
+#             state_dict = p["model"]  # 有些预训练模型存的是 "model" 而不是 "state_dict"
+#         else:
+#             raise KeyError(f"Invalid checkpoint format: {p.keys()}")
+#         model.load_state_dict(state_dict)
+#     return model
 
-@register_model
-def pretrain_videomae_base_patch16_224(ckpt_pth=None, **kwargs):
-    model = PretrainVisionTransformer(
-        img_size=224,
-        patch_size=16,
-        encoder_embed_dim=768,
-        encoder_depth=12,
-        encoder_num_heads=12,
-        encoder_num_classes=0,
-        decoder_num_classes=1536,
-        decoder_embed_dim=384,
-        decoder_depth=4,
-        decoder_num_heads=6,
-        mlp_ratio=4,
-        qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6),
-        **kwargs
-    )
-    model.default_cfg = _cfg()
-    if ckpt_pth is not None:
-        p = torch.load(ckpt_pth)
-        state_dict = p["state_dict"]
-        model.load_state_dict(state_dict)
-    return model
-
-@register_model
 def VideoMAE_ViT_B_1600(ckpt_pth=None, **kwargs):
     model = PretrainVisionTransformer(
-        # img_size=_cfg["inputsize"][1],
-        # patch_size=16,
-        encoder_embed_dim=1024, # 768
+        encoder_embed_dim=1024,  # 原值 768
         encoder_depth=12,
         encoder_num_heads=12,
         encoder_num_classes=0,
-        # decoder_num_classes=1536,
-        decoder_embed_dim=512, # 384
+        decoder_embed_dim=512,  # 原值 384
         decoder_depth=4,
         decoder_num_heads=6,
         mlp_ratio=4,
@@ -489,62 +430,34 @@ def VideoMAE_ViT_B_1600(ckpt_pth=None, **kwargs):
         **kwargs
     )
     model.default_cfg = _cfg()
+
     if ckpt_pth is not None:
-        p = torch.load(ckpt_pth)
-        if "state_dict" in p:
-            state_dict = p["state_dict"]
-        elif "model" in p:
-            state_dict = p["model"]  # 有些预训练模型存的是 "model" 而不是 "state_dict"
-        else:
-            raise KeyError(f"Invalid checkpoint format: {p.keys()}")
-        model.load_state_dict(state_dict)
+        try:
+            checkpoint = torch.load(ckpt_pth, map_location="cpu")
+            state_dict = checkpoint.get("state_dict", checkpoint.get("model", checkpoint))
+
+            # 处理可能的 "module." 前缀问题
+            new_state_dict = {}
+            for k, v in state_dict.items():
+                new_key = k.replace("module.", "")
+                new_state_dict[new_key] = v
+
+            # **过滤掉维度不匹配的参数**
+            model_dict = model.state_dict()
+            filtered_state_dict = {
+                k: v for k, v in new_state_dict.items()
+                if k in model_dict and v.shape == model_dict[k].shape
+            }
+
+            # **只加载匹配的参数**
+            model_dict.update(filtered_state_dict)
+            model.load_state_dict(model_dict, strict=False)
+
+            print(f"Checkpoint partially loaded from {ckpt_pth}")
+            print(f"Loaded {len(filtered_state_dict)} / {len(new_state_dict)} parameters successfully.")
+
+        except Exception as e:
+            print(f"Failed to load checkpoint: {e}")
+
     return model
 
-
-
-@register_model
-def pretrain_videomae_large_patch16_224(pretrained=False, **kwargs):
-    model = PretrainVisionTransformer(
-        img_size=224,
-        patch_size=16,
-        encoder_embed_dim=1024,
-        encoder_depth=24,
-        encoder_num_heads=16,
-        encoder_num_classes=0,
-        decoder_num_classes=1536,
-        decoder_embed_dim=512,
-        decoder_num_heads=8,
-        mlp_ratio=4,
-        qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6),
-        **kwargs
-    )
-    model.default_cfg = _cfg()
-    if pretrained:
-        checkpoint = torch.load(kwargs["init_ckpt"], map_location="cpu")
-        model.load_state_dict(checkpoint["model"])
-    return model
-
-
-@register_model
-def pretrain_videomae_huge_patch16_224(pretrained=False, **kwargs):
-    model = PretrainVisionTransformer(
-        img_size=224,
-        patch_size=16,
-        encoder_embed_dim=1280,
-        encoder_depth=32,
-        encoder_num_heads=16,
-        encoder_num_classes=0,
-        decoder_num_classes=1536,
-        decoder_embed_dim=640,
-        decoder_num_heads=8,
-        mlp_ratio=4,
-        qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6),
-        **kwargs
-    )
-    model.default_cfg = _cfg()
-    if pretrained:
-        checkpoint = torch.load(kwargs["init_ckpt"], map_location="cpu")
-        model.load_state_dict(checkpoint["model"])
-    return model
