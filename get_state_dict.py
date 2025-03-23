@@ -22,5 +22,6 @@ with open(output_path, "w") as f:
         f.write(key + "\n")
 
 print(f"模型参数 keys 已保存到 {output_path}")
-
+print("hidden_size")
+print(model_state_dict['decoder.norm.weight'].shape)  # 检查 hidden_size
 print(f"Keys 已保存到 {output_path}")
