@@ -491,7 +491,12 @@ def VideoMAE_ViT_B_1600(ckpt_pth=None, **kwargs):
     model.default_cfg = _cfg()
     if ckpt_pth is not None:
         p = torch.load(ckpt_pth)
-        state_dict = p["state_dict"]
+        if "state_dict" in p:
+            state_dict = p["state_dict"]
+        elif "model" in p:
+            state_dict = p["model"]  # 有些预训练模型存的是 "model" 而不是 "state_dict"
+        else:
+            raise KeyError(f"Invalid checkpoint format: {p.keys()}")
         model.load_state_dict(state_dict)
     return model
 
