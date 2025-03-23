@@ -20,3 +20,4 @@ ckpt_path:
 save_ckpt_freq: 5
 batch_size: 48
 num_workers: 4
+

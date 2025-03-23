@@ -45,9 +45,13 @@ class UnlabelCombinedMMDataModule(pl.LightningDataModule):
             self.transform_train_pose,
         ]
         self.transform_eval = self.transform_eval_rgb
+        # add
+        self.transform_train = None
 
     def setup(self, stage=None):
         if stage == "fit" or stage is None:
+            # 这里可能需要检查 transform_train 是否正确赋值
+            self.transform_train = self.get_train_transforms()
             self.train_dataset = Ego4DUnlabelCombinedMMDataset(
                 self.data_module_cfg, self.transform_train, self.mask_gen
             )
@@ -121,3 +125,14 @@ class UnlabelCombinedMMDataModule(pl.LightningDataModule):
             batch_sampler=self.episodic_batch_sampler_test,
             num_workers=self.cfg.num_workers,
         )
+
+    def get_train_transforms(self):
+        from torchvision import transforms
+
+        return transforms.Compose([
+            transforms.RandomResizedCrop(224),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+
