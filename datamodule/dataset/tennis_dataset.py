@@ -160,3 +160,29 @@ class TennisDataset(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self._clip_frame)
+
+    def _get_input(self, source_dir, source_frames, unlabel_dir, unlabel_frames):
+        """加载 source 和 unlabel 数据，并生成 mask"""
+        source_images = []
+        for frame in source_frames:
+            img_path = Path(source_dir, f"{frame}.jpg")
+            if img_path.exists():
+                img = Image.open(img_path).convert(self.mode)
+                source_images.append(self.transform(img))
+            else:
+                logger.warning(f"缺失图像: {img_path}")
+                source_images.append(torch.zeros(3, 224, 224))  # 用空白图填充
+
+        unlabel_images = []
+        for frame in unlabel_frames:
+            img_path = Path(unlabel_dir, f"{frame}.jpg")
+            if img_path.exists():
+                img = Image.open(img_path).convert(self.mode)
+                unlabel_images.append(self.transform(img))
+            else:
+                logger.warning(f"缺失图像: {img_path}")
+                unlabel_images.append(torch.zeros(3, 224, 224))
+
+        mask = self.mask_gen(len(source_images))  # 生成掩码
+
+        return torch.stack(source_images), torch.stack(unlabel_images), mask
