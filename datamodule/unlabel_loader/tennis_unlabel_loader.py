@@ -34,7 +34,7 @@ class TENNISUnlabelLoader(object):
                 # 构造图像帧路径
                 dir_to_img_frame = Path(
                     cfg.target_data_dir,
-                    "frames/rgb/train",
+                    "vid_frames_224",
                     far_name,
                     near_name,
                     video_id,
