@@ -49,14 +49,14 @@ class TennisDataModule(pl.LightningDataModule):
             pin_memory=True,
         )
 
-    def val_dataloader(self):
-        return DataLoader(
-            self.val_dataset,
-            batch_size=self.cfg.trainer.batch_size,
-            shuffle=False,
-            num_workers=self.cfg.num_workers,
-            pin_memory=True,
-        )
+    # def val_dataloader(self):
+    #     return DataLoader(
+    #         self.val_dataset,
+    #         batch_size=self.cfg.trainer.batch_size,
+    #         shuffle=False,
+    #         num_workers=self.cfg.num_workers,
+    #         pin_memory=True,
+    #     )
 
     def get_train_transforms(self):
         from torchvision import transforms
