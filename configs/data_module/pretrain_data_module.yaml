@@ -24,7 +24,7 @@ mask_ratio: 0.9
 #source_sampling_rate: 4
 
 # Delete video
-
+delete: []
 #delete: [
 #  "d18ef16d-f803-4387-bb5e-7876f1522a63",
 #  "77ed1624-f87b-4196-9a0a-95b7023b18e4",
