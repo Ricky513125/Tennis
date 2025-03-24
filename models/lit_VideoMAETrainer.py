@@ -51,7 +51,7 @@ class VideoMAETrainer(pl.LightningModule):
             videos_squeeze = rearrange(
                 unnorm_videos,
                 "b c (t p0) (h p1) (w p2) -> b (t h w) (p0 p1 p2) c",
-                p0=2,
+                p0=1, #
                 p1=self.patch_size,
                 p2=self.patch_size,
             )
