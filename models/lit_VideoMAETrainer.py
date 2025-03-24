@@ -68,6 +68,7 @@ class VideoMAETrainer(pl.LightningModule):
                 p1=self.patch_size,
                 p2=self.patch_size,
             )
+        print("kanzhen li : videos_patch:", videos_patch)
         return videos_patch
 
     def training_step(self, batch, batch_idx):
@@ -76,6 +77,7 @@ class VideoMAETrainer(pl.LightningModule):
         unlabel_frames = input["unlabel_frames"]
         action_label = input["action_label"]
         bool_masked_pos = input["mask"]
+        print("看这里", bool_masked_pos)
         bool_masked_pos = bool_masked_pos.flatten(1).to(torch.bool)
 
 
