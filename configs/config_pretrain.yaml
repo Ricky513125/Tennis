@@ -22,3 +22,4 @@ save_ckpt_freq: 5
 batch_size: 48
 num_workers: 4
 
+target_json_path: /mnt/ssd2/lingyu/Tennis/train.json
