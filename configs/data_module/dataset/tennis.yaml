@@ -1,7 +1,7 @@
 # Target Dataset
 # TENNIS
 target_dataset: TENNIS
-target_data_dir: /data/TENNIS/
+target_data_dir: /mnt/ssd2/lingyu/Tennis/data/TENNIS/
 #fewshot_eval_json_path: /cdfsl/target/meccano/annotations/meccano_val.json
 #unlabel_json_path: /cdfsl/target/meccano/annotations/meccano_unlabel.json
 target_sampling_rate: 1
