@@ -134,6 +134,7 @@ class PretrainVisionTransformerEncoder(nn.Module):
         B, _, C = x.shape
 
         if mask is not None:
+            mask = mask[:, :N]  # 保证 mask 维度匹配 x.shape[1]
             x = x[~mask].reshape(B, -1, C)  # ~mask means visible
 
         if self.use_checkpoint:
