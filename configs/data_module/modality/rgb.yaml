@@ -1,6 +1,6 @@
 # Modality specific parameters
 # RGB
-mode: rgb
+mode: RGB
 patch_size: [16, 16]
 input_size: 224
 mean: [0.485, 0.456, 0.406]
