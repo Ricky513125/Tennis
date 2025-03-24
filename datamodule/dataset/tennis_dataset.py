@@ -96,40 +96,77 @@ class TennisDataset(torch.utils.data.Dataset):
         with open(cfg.target_json_path) as f:
             data = json.load(f)
 
-        print(f"DEBUG: type(data) = {type(data)}, data = {data}")
+        # print(f"DEBUG: type(data) = {type(data)}, data = {data}")
 
-        for clip_dict in data["clips"]:
-            video_uid = clip_dict["video_id"]
-            clip_uid = clip_dict["clip_uid"]
-            clip_frame = clip_dict["clip_frame"]
-            verb_label = clip_dict["verb_label"]
-            noun_label = clip_dict["noun_label"]
-            action_label = (verb_label, noun_label)
+        for clip_dict in data:
+            # 确保 clip_dict 是字典，并包含 "clips" 这个键
+            if isinstance(clip_dict, dict) and "clips" in clip_dict:
+                for clip in clip_dict["clips"]:
+                    # print(clip)  # 这里可以检查clip的内容
+                    video_uid = clip_dict["video_id"]
+                    clip_uid = clip_dict["clip_uid"]
+                    clip_frame = clip_dict["clip_frame"]
+                    verb_label = clip_dict["verb_label"]
+                    noun_label = clip_dict["noun_label"]
+                    action_label = (verb_label, noun_label)
 
-            if video_uid in cfg.delete:
-                print(f"{video_uid} 是无效视频，将被跳过")
-                continue
+                    if video_uid in cfg.delete:
+                        print(f"{video_uid} 是无效视频，将被跳过")
+                        continue
 
-            if action_label not in self._action_list:
-                self._action_list.append(action_label)
-            if verb_label not in self._verb_list:
-                self._verb_list.append(verb_label)
-            if noun_label not in self._noun_list:
-                self._noun_list.append(noun_label)
+                    if action_label not in self._action_list:
+                        self._action_list.append(action_label)
+                    if verb_label not in self._verb_list:
+                        self._verb_list.append(verb_label)
+                    if noun_label not in self._noun_list:
+                        self._noun_list.append(noun_label)
 
-            action_label_internal = self._action_list.index(action_label)
-            verb_label_internal = self._verb_list.index(verb_label)
-            noun_label_internal = self._noun_list.index(noun_label)
+                    action_label_internal = self._action_list.index(action_label)
+                    verb_label_internal = self._verb_list.index(verb_label)
+                    noun_label_internal = self._noun_list.index(noun_label)
 
-            dir_to_img_frame = Path(cfg.target_data_dir, "image_frame", clip_uid)
+                    dir_to_img_frame = Path(cfg.target_data_dir, "image_frame", clip_uid)
 
-            self._clip_uid.append(clip_uid)
-            self._dir_to_img_frame.append(dir_to_img_frame)
-            self._clip_frame.append(clip_frame)
-            self._action_label.append(action_label)
-            self._action_label_internal.append(action_label_internal)
-            self._verb_label_internal.append(verb_label_internal)
-            self._noun_label_internal.append(noun_label_internal)
+                    self._clip_uid.append(clip_uid)
+                    self._dir_to_img_frame.append(dir_to_img_frame)
+                    self._clip_frame.append(clip_frame)
+                    self._action_label.append(action_label)
+                    self._action_label_internal.append(action_label_internal)
+                    self._verb_label_internal.append(verb_label_internal)
+                    self._noun_label_internal.append(noun_label_internal)
+
+        # for clip_dict in data["clips"]:
+        #     video_uid = clip_dict["video_id"]
+        #     clip_uid = clip_dict["clip_uid"]
+        #     clip_frame = clip_dict["clip_frame"]
+        #     verb_label = clip_dict["verb_label"]
+        #     noun_label = clip_dict["noun_label"]
+        #     action_label = (verb_label, noun_label)
+        #
+        #     if video_uid in cfg.delete:
+        #         print(f"{video_uid} 是无效视频，将被跳过")
+        #         continue
+        #
+        #     if action_label not in self._action_list:
+        #         self._action_list.append(action_label)
+        #     if verb_label not in self._verb_list:
+        #         self._verb_list.append(verb_label)
+        #     if noun_label not in self._noun_list:
+        #         self._noun_list.append(noun_label)
+        #
+        #     action_label_internal = self._action_list.index(action_label)
+        #     verb_label_internal = self._verb_list.index(verb_label)
+        #     noun_label_internal = self._noun_list.index(noun_label)
+        #
+        #     dir_to_img_frame = Path(cfg.target_data_dir, "image_frame", clip_uid)
+        #
+        #     self._clip_uid.append(clip_uid)
+        #     self._dir_to_img_frame.append(dir_to_img_frame)
+        #     self._clip_frame.append(clip_frame)
+        #     self._action_label.append(action_label)
+        #     self._action_label_internal.append(action_label_internal)
+        #     self._verb_label_internal.append(verb_label_internal)
+        #     self._noun_label_internal.append(noun_label_internal)
 
         logger.info(f"构建 Tennis 数据集 (size: {len(self._clip_frame)})")
         logger.info(f"动作类别数: {len(self._action_list)}")
