@@ -35,8 +35,8 @@ class TENNISUnlabelLoader(object):
                 dir_to_img_frame = Path(
                     cfg.target_data_dir,
                     "vid_frames_224",
-                    far_name,
-                    near_name,
+                    # far_name,
+                    # near_name,
                     video_id,
                 )
 
