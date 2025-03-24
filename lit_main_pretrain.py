@@ -19,12 +19,20 @@ from datamodule.lit_tennis_data_module import (
 
 from models.lit_VideoMAETrainer import VideoMAETrainer
 
+from omegaconf import OmegaConf
+
+
+
+
 warnings.filterwarnings("ignore")
 logger = logging.getLogger(__name__)
 
 
 @hydra.main(config_path="configs", config_name="config_pretrain.yaml")
 def main(cfg):
+    # gpt
+    print("注意这里！", OmegaConf.to_yaml(cfg))  # 打印配置，确保 `target_json_path` 在里面
+
     print(cfg.trainer)
     # initialize random seeds
     torch.cuda.manual_seed_all(cfg.seed)
