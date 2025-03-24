@@ -167,9 +167,9 @@ class TennisDataset(torch.utils.data.Dataset):
 
         source_images = []
         for frame in source_frames:
-            print("source_dir : ", source_dir)
-            img_path = Path(f"/mnt/ssd2/lingyu/Tennis/data/TENNIS/{frame:06d}.jpg")
-            print("img_path: ", img_path)
+            # print("source_dir : ", source_dir)
+            img_path = Path(f"{source_dir}/{frame:06d}.jpg")
+            # print("img_path: ", img_path)
             if img_path.exists():
                 img = Image.open(img_path).convert(self.mode)
                 source_images.append(self.transform(img))
@@ -182,7 +182,7 @@ class TennisDataset(torch.utils.data.Dataset):
 
         unlabel_images = []
         for frame in unlabel_frames:
-            img_path = Path(f"/mnt/ssd2/lingyu/Tennis/data/TENNIS/{frame:06d}.jpg")
+            img_path = Path(f"{unlabel_dir}/{frame:06d}.jpg")
             if img_path.exists():
                 img = Image.open(img_path).convert(self.mode)
                 unlabel_images.append(self.transform(img))
