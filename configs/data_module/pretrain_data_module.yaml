@@ -7,6 +7,9 @@ defaults:
 color_jitter: 0.0
 train_interpolation: bicubic
 
+data_module:
+  target_json_path:
+
 # Dataset params
 num_frames: 16
 mask_type: tube # ['random', 'tube']
