@@ -96,6 +96,8 @@ class TennisDataset(torch.utils.data.Dataset):
         with open(cfg.target_json_path) as f:
             data = json.load(f)
 
+        print(f"DEBUG: type(data) = {type(data)}, data = {data}")
+
         for clip_dict in data["clips"]:
             video_uid = clip_dict["video_id"]
             clip_uid = clip_dict["clip_uid"]
