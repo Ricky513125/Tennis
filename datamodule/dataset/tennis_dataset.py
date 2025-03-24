@@ -188,6 +188,6 @@ class TennisDataset(torch.utils.data.Dataset):
                 logger.warning(f"缺失图像: {img_path}")
                 unlabel_images.append(torch.zeros(3, 224, 224))
 
-        mask = self.mask_gen(len(source_images))  # 生成掩码
+        mask = self.mask_gen()  # 生成掩码
 
         return torch.stack(source_images), torch.stack(unlabel_images), mask
