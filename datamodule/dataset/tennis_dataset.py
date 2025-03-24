@@ -174,7 +174,7 @@ class TennisDataset(torch.utils.data.Dataset):
                 img = Image.open(img_path).convert(self.mode)
                 source_images.append(self.transform(img))
             else:
-                logger.warning(f"缺失图像: {img_path}")
+                logger.warning(f"缺失图像 source: {img_path}")
                 source_images.append(torch.zeros(3, 224, 224))  # 用空白图填充
 
         if isinstance(unlabel_frames, int):
@@ -187,7 +187,7 @@ class TennisDataset(torch.utils.data.Dataset):
                 img = Image.open(img_path).convert(self.mode)
                 unlabel_images.append(self.transform(img))
             else:
-                logger.warning(f"缺失图像: {img_path}")
+                logger.warning(f"缺失图像 unlabel: {img_path}")
                 unlabel_images.append(torch.zeros(3, 224, 224))
 
         mask = self.mask_gen()  # 生成掩码
