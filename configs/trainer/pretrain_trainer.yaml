@@ -24,3 +24,7 @@ warmup_lr: 1e-6
 min_lr: 1e-5
 warmup_epochs: 10
 use_checkpoint: False
+
+
+# add
+batch_size: 32
