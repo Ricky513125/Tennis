@@ -343,6 +343,8 @@ class PretrainVisionTransformer(nn.Module):
         )
 
         trunc_normal_(self.mask_token, std=0.02)
+        # add
+        # self.config = self.model(hidden_size=384)
 
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
