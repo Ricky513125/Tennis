@@ -122,6 +122,8 @@ class PretrainVisionTransformerEncoder(nn.Module):
     def forward_features(self, x, mask=None):
         _, _, T, _, _ = x.shape
         x = self.patch_embed(x)
+        print(f"x.shape: {x.shape}")  # (B, N, C)
+        print(f"pos_embed.shape: {self.pos_embed.shape}")  # (1, ?, C)
 
         x = x + self.pos_embed.type_as(x).to(x.device).clone().detach()
 
