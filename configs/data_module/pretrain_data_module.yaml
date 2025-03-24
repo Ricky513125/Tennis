@@ -7,8 +7,7 @@ defaults:
 color_jitter: 0.0
 train_interpolation: bicubic
 
-data_module:
-  target_json_path: /mnt/ssd2/lingyu/Tennis/train.json
+target_json_path: /mnt/ssd2/lingyu/Tennis/train.json
 
 # Dataset params
 num_frames: 16
