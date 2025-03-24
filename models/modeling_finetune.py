@@ -217,6 +217,7 @@ class PatchEmbed(nn.Module):
         )
 
     def forward(self, x, **kwargs):
+        print("Input shape:", x.shape)  # Debugging
         B, C, T, H, W = x.shape
         # FIXME look at relaxing size constraints
         # assert (
