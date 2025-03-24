@@ -9,7 +9,7 @@ train_interpolation: bicubic
 
 target_json_path: /mnt/ssd2/lingyu/Tennis/train.json
 unlabel_json_path: /mnt/ssd2/lingyu/Tennis/test.json
-target_data_dir: /data/TENNIS/
+target_data_dir: /mnt/ssd2/lingyu/Tennis/data/TENNIS/
 # Dataset params
 num_frames: 16
 mask_type: tube # ['random', 'tube']
