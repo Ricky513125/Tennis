@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 @hydra.main(config_path="configs", config_name="config_pretrain.yaml")
 def main(cfg):
     # gpt
-    print("注意这里！", OmegaConf.to_yaml(cfg))  # 打印配置，确保 `target_json_path` 在里面
+    # print("注意这里！", OmegaConf.to_yaml(cfg))  # 打印配置，确保 `target_json_path` 在里面
 
     print(cfg.trainer)
     # initialize random seeds

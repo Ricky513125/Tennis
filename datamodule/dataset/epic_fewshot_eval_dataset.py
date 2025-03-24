@@ -59,10 +59,10 @@ class EPICFewshotEvalDataset(torch.utils.data.Dataset):
             self._action_label.append(action_label)
             self._action_idx.append(action_idx)
 
-        logger.info(f"Constructing EPIC dataloader (size: {len(self._uid)})")
+        logger.info(f"Constructing  dataloader (size: {len(self._uid)})")
 
     def _get_frame(self, dir_to_img_frame, frame_name, mode, frames):
-        if mode == "RGB":
+        if mode == "rgb":
             path = dir_to_img_frame / Path(f"frame_{str(frame_name).zfill(10)}.jpg")
             if path.exists():
                 frame = Image.open(str(path))
@@ -95,7 +95,7 @@ class EPICFewshotEvalDataset(torch.utils.data.Dataset):
             frames.append(frame)
 
         # [T, H, W, C] -> [T*C, H, W] -> [C, T, H, W]
-        if self.mode == "RGB":
+        if self.mode == "rgb":
             frames, _ = self.transform((frames, None))
             frames = frames.view((self.num_frames, 3) + frames.size()[-2:]).transpose(
                 0, 1
