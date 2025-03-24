@@ -116,11 +116,12 @@ class VideoMAETrainer(pl.LightningModule):
 
             B, _, C = videos_patch_source.shape
             # add
-            # if bool_masked_pos.shape[1] > videos_patch_source.shape[1]:
-            #     bool_masked_pos = bool_masked_pos[:, :videos_patch_source.shape[1]]
+            new_masked_pos = bool_masked_pos
+            if bool_masked_pos.shape[1] > videos_patch_source.shape[1]:
+                new_masked_pos = bool_masked_pos[:, :videos_patch_source.shape[1]]
 
-            labels_source = videos_patch_source[bool_masked_pos].reshape(B, -1, C)
-            labels_target = videos_patch_target[bool_masked_pos].reshape(B, -1, C)
+            labels_source = videos_patch_source[new_masked_pos].reshape(B, -1, C)
+            labels_target = videos_patch_target[new_masked_pos].reshape(B, -1, C)
 
         preds_source, logits_source = self.model(source_frames, bool_masked_pos)
         preds_target, _ = self.model(unlabel_frames, bool_masked_pos)
