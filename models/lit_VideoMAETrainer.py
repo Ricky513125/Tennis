@@ -101,8 +101,12 @@ class VideoMAETrainer(pl.LightningModule):
                 std = torch.as_tensor(self.cfg.data_module.modality.std)[
                     None, :, None, None, None
                 ].type_as(source_frames)
-            unnorm_videos_source = source_frames * std + mean  # in [0, 1]
-            unnorm_videos_target = unlabel_frames * std + mean  # in [0, 1]
+            # unnorm_videos_source = source_frames * std + mean  # in [0, 1]
+            # unnorm_videos_target = unlabel_frames * std + mean  # in [0, 1]
+
+            # changed, add dimensions
+            unnorm_videos_source = source_frames * std.view(1, 1, 3, 1, 1) + mean.view(1, 1, 3, 1, 1)
+            unnorm_videos_target = unlabel_frames * std.view(1, 1, 3, 1, 1) + mean.view(1, 1, 3, 1, 1)
 
             videos_patch_source = self.normalize_videos(unnorm_videos_source)
             videos_patch_target = self.normalize_videos(unnorm_videos_target)
