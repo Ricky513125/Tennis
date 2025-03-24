@@ -81,7 +81,7 @@ class TennisDataset(torch.utils.data.Dataset):
             noun_label_internal = self._noun_list.index(noun_label)
 
             # 图片路径
-            dir_to_img_frame = Path(cfg.target_data_dir, "image_frame", clip_uid)
+            dir_to_img_frame = Path(cfg.target_data_dir, "vid_frames_224", clip_uid)
 
             # 存储数据
             self._clip_uid.append(clip_uid)
@@ -163,6 +163,8 @@ class TennisDataset(torch.utils.data.Dataset):
 
     def _get_input(self, source_dir, source_frames, unlabel_dir, unlabel_frames):
         """加载 source 和 unlabel 数据，并生成 mask"""
+        print(f"unlabel_frames type: {type(unlabel_frames)}, value: {unlabel_frames}")
+
         source_images = []
         for frame in source_frames:
             img_path = Path(source_dir, f"{frame}.jpg")
