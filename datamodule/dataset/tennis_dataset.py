@@ -18,11 +18,69 @@ class TennisDataset(torch.utils.data.Dataset):
         self.transform = transform
         self.mask_gen = mask_gen
         self.mode = mode
-        self._construct_source_loader(cfg)
+        self._construct_target_loader(cfg)
         self._construct_unlabel_loader(cfg)
 
-    def _construct_source_loader(self, cfg):
-        # initialization
+    # def _construct_source_loader(self, cfg):
+    #     # initialization
+    #     self._clip_uid = []
+    #     self._dir_to_img_frame = []
+    #     self._clip_frame = []
+    #     self._action_label = []
+    #     self._action_list = []
+    #     self._verb_list = []
+    #     self._noun_list = []
+    #     self._action_label_internal = []
+    #     self._verb_label_internal = []
+    #     self._noun_label_internal = []
+    #
+    #     # read annotation json file
+    #     with open(cfg.source_json_path) as f:
+    #         data = json.load(f)
+    #     for i, clip_dict in enumerate(data["clips"]):
+    #         video_uid = clip_dict["video_id"]
+    #         clip_uid = clip_dict["clip_uid"]
+    #         clip_frame = clip_dict["clip_frame"]
+    #         verb_label = clip_dict["verb_label"]
+    #         noun_label = clip_dict["noun_label"]
+    #         action_label = (verb_label, noun_label)
+    #
+    #         # skip
+    #         if video_uid in cfg.delete:
+    #             print(
+    #                 f"{video_uid} is invalid video, so it will not be included in the dataloarder"
+    #             )
+    #             continue
+    #
+    #         if action_label not in self._action_list:
+    #             self._action_list.append(action_label)
+    #         if verb_label not in self._verb_list:
+    #             self._verb_list.append(verb_label)
+    #         if noun_label not in self._noun_list:
+    #             self._noun_list.append(noun_label)
+    #
+    #         action_label_internal = self._action_list.index(action_label)
+    #         verb_label_internal = self._verb_list.index(verb_label)
+    #         noun_label_internal = self._noun_list.index(noun_label)
+    #
+    #         dir_to_img_frame = Path(cfg.source_data_dir, "image_frame", clip_uid)
+    #         self._clip_uid.append(clip_uid)
+    #         self._dir_to_img_frame.append(dir_to_img_frame)
+    #         self._clip_frame.append(clip_frame)
+    #         self._action_label.append(action_label)
+    #         self._action_label_internal.append(action_label_internal)
+    #         self._verb_label_internal.append(verb_label_internal)
+    #         self._noun_label_internal.append(noun_label_internal)
+    #
+    #     logger.info(f"Constructing Tennis dataloader (size: {len(self._clip_frame)})")
+    #     logger.info(f"Number of action classes: {len(self._action_list)}")
+    #
+    def _construct_unlabel_loader(self, cfg):
+        self.unlabel_loader = get_unlabel_loader(cfg.dataset)
+
+    # gpt
+    def _construct_target_loader(self, cfg):
+        """只加载 Tennis target dataset"""
         self._clip_uid = []
         self._dir_to_img_frame = []
         self._clip_frame = []
@@ -34,10 +92,11 @@ class TennisDataset(torch.utils.data.Dataset):
         self._verb_label_internal = []
         self._noun_label_internal = []
 
-        # read annotation json file
-        with open(cfg.source_json_path) as f:
+        # 读取 target dataset JSON
+        with open(cfg.target_json_path) as f:
             data = json.load(f)
-        for i, clip_dict in enumerate(data["clips"]):
+
+        for clip_dict in data["clips"]:
             video_uid = clip_dict["video_id"]
             clip_uid = clip_dict["clip_uid"]
             clip_frame = clip_dict["clip_frame"]
@@ -45,11 +104,8 @@ class TennisDataset(torch.utils.data.Dataset):
             noun_label = clip_dict["noun_label"]
             action_label = (verb_label, noun_label)
 
-            # skip
             if video_uid in cfg.delete:
-                print(
-                    f"{video_uid} is invalid video, so it will not be included in the dataloarder"
-                )
+                print(f"{video_uid} 是无效视频，将被跳过")
                 continue
 
             if action_label not in self._action_list:
@@ -63,7 +119,8 @@ class TennisDataset(torch.utils.data.Dataset):
             verb_label_internal = self._verb_list.index(verb_label)
             noun_label_internal = self._noun_list.index(noun_label)
 
-            dir_to_img_frame = Path(cfg.source_data_dir, "image_frame", clip_uid)
+            dir_to_img_frame = Path(cfg.target_data_dir, "image_frame", clip_uid)
+
             self._clip_uid.append(clip_uid)
             self._dir_to_img_frame.append(dir_to_img_frame)
             self._clip_frame.append(clip_frame)
@@ -72,11 +129,35 @@ class TennisDataset(torch.utils.data.Dataset):
             self._verb_label_internal.append(verb_label_internal)
             self._noun_label_internal.append(noun_label_internal)
 
-        logger.info(f"Constructing Tennis dataloader (size: {len(self._clip_frame)})")
-        logger.info(f"Number of action classes: {len(self._action_list)}")
+        logger.info(f"构建 Tennis 数据集 (size: {len(self._clip_frame)})")
+        logger.info(f"动作类别数: {len(self._action_list)}")
 
-    def _construct_unlabel_loader(self, cfg):
-        self.unlabel_loader = get_unlabel_loader(cfg.dataset)
+    def _get_frame(self, dir_to_img_frame, frame_name, mode, frames):
+        """加载单帧图像"""
+        path = dir_to_img_frame / Path(str(frame_name).zfill(6) + ".jpg")
+        if path.exists():
+            frame = Image.open(str(path))
+        else:
+            frame = frames[-1] if frames else None
+        return frame
+
+    def _get_input(self, dir_to_img_frame, clip_start_frame):
+        """获取输入图像序列"""
+        frames = []
+        frame_names = [
+            max(1, clip_start_frame + self.cfg.target_sampling_rate * i)
+            for i in range(self.cfg.num_frames)
+        ]
+
+        for frame_name in frame_names:
+            frame = self._get_frame(dir_to_img_frame, frame_name, self.mode, frames)
+            frames.append(frame)
+
+        frames = self.transform.weak_aug(frames)
+        frames = frames.permute(1, 0, 2, 3)
+
+        mask = self.mask_gen()
+        return frames, mask
 
     def _get_frame_source(self, dir_to_img_frame, frame_name, mode, frames):
         if mode == "RGB":
@@ -146,6 +227,7 @@ class TennisDataset(torch.utils.data.Dataset):
         unlabel_dir_to_img_frame,
         unlabel_clip_start_frame,
     ):
+        """获取输入图像序列"""
         # initialization
         source_frames = []
         unlabel_frames = []
