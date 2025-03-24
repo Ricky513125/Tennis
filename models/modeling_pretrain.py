@@ -124,8 +124,12 @@ class PretrainVisionTransformerEncoder(nn.Module):
         x = self.patch_embed(x)
         print(f"x.shape: {x.shape}")  # (B, N, C)
         print(f"pos_embed.shape: {self.pos_embed.shape}")  # (1, ?, C)
+        # 修正 pos_embed 维度
+        B, N, C = x.shape  # 获取 x 的 token 数 N
+        pos_embed = self.pos_embed[:, :N, :].to(x.device)  # 取前 N 个位置编码
+        x = x + pos_embed  # 现在 x.shape 和 pos_embed.shape 匹配
 
-        x = x + self.pos_embed.type_as(x).to(x.device).clone().detach()
+        # x = x + self.pos_embed.type_as(x).to(x.device).clone().detach()
 
         B, _, C = x.shape
 
