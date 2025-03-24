@@ -18,6 +18,7 @@ class TennisDataset(torch.utils.data.Dataset):
         self.transform = transform
         self.mask_gen = mask_gen
         self.mode = mode
+        self.num_frames = cfg.num_frames  # 固定采样的帧数
         self._construct_target_loader(cfg)
         self._construct_unlabel_loader(cfg)
 
@@ -58,6 +59,14 @@ class TennisDataset(torch.utils.data.Dataset):
             video_uid = clip_dict["video"]
             clip_uid = video_uid
             clip_frame = [event["frame"] for event in clip_dict["events"]]
+
+            if len(clip_frame) > self.num_frames:
+                indices = np.linspace(0, len(clip_frame) - 1, self.num_frames, dtype=int)
+                clip_frame = [clip_frame[i] for i in indices]
+            elif len(clip_frame) < self.num_frames:
+                pad_size = self.num_frames - len(clip_frame)
+                clip_frame += [clip_frame[-1]] * pad_size  # 重复最后一帧填充
+
             verb_label = clip_dict["far_name"]  # 假设球员名字作为动词
             noun_label = clip_dict["near_name"]  # 对手名字作为名词
             action_label = (verb_label, noun_label)
