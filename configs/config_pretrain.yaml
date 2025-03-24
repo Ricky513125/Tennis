@@ -9,13 +9,14 @@ defaults:
 seed: 42
 monitored_metric: loss
 dirpath: checkpoints/
-train: True
+train: False #True
 test: False
 accelerator: gpu
 devices: [0]
 #devices: [0, 1]
 strategy: deepspeed
-ckpt_path:
+load_checkpoint: True #
+ckpt_path: /mnt/ssd2/lingyu/Tennis/ckpt/VideoMAE_ViT_B_1600.pth
 
 save_ckpt_freq: 5
 batch_size: 48

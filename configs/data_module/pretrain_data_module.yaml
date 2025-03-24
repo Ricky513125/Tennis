@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - modality: RGB  # rgb, flow, pose
+  - modality: rgb  # rgb, flow, pose
   - dataset: tennis  # epic, meccano, wear
 
 # Augmentation parameters

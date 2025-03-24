@@ -21,6 +21,9 @@ class VideoMAETrainer(pl.LightningModule):
         self.normalize_target = cfg.trainer.normalize_target
         self.patch_size = cfg.data_module.modality.patch_size[0]
         self.training_step_outputs = []
+        # ✅ 重新初始化分类层，适配 Tennis 类别
+        self.model.classifier = nn.Linear(self.model.config.hidden_size, cfg.dataset.num_classes)
+
 
     def configure_optimizers(self):
         total_batch_size = self.scale_lr()

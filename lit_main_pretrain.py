@@ -10,7 +10,13 @@ from pytorch_lightning import Trainer, loggers
 
 from datamodule.lit_unlabel_combined_pretrain_data_module import (
     UnlabelCombinedPretrainDataModule,
+
 )
+
+from datamodule.lit_tennis_data_module import (
+    TennisDataModule
+)
+
 from models.lit_VideoMAETrainer import VideoMAETrainer
 
 warnings.filterwarnings("ignore")
@@ -27,7 +33,9 @@ def main(cfg):
     random.seed(cfg.seed)
 
     # data module
-    data_module = UnlabelCombinedPretrainDataModule(cfg)
+    # data_module = UnlabelCombinedPretrainDataModule(cfg)
+    # use Tennis data module
+    data_module = TennisDataModule(cfg)
 
     # model
     model = VideoMAETrainer(cfg)
