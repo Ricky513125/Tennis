@@ -6,3 +6,5 @@ target_data_dir: /data/TENNIS/
 #unlabel_json_path: /cdfsl/target/meccano/annotations/meccano_unlabel.json
 target_sampling_rate: 1
 target_json_path: /mnt/ssd2/lingyu/Tennis/train.json
+unlabel_json_path: /mnt/ssd2/lingyu/Tennis/test.json
+
