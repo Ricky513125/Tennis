@@ -193,12 +193,20 @@ class TennisDataset(torch.utils.data.Dataset):
         print(type(self.cfg.source_sampling_rate))  # 打印类型
         print('---num_frames', self.cfg.num_frames)
         print('---clip_start_frame', source_clip_start_frame)
+        # source_frame_names = [
+        #     max(1, source_clip_start_frame + self.cfg.source_sampling_rate * i)
+        #     for i in range(self.cfg.num_frames)
+        # ]  # original one
+        # unlabel_frame_names = [
+        #     max(1, unlabel_clip_start_frame + self.cfg.dataset.target_sampling_rate * i)
+        #     for i in range(self.cfg.num_frames)
+        # ]
         source_frame_names = [
-            max(1, source_clip_start_frame + self.cfg.source_sampling_rate * i)
+            max(1, source_clip_start_frame[i] + self.cfg.source_sampling_rate * i)
             for i in range(self.cfg.num_frames)
         ]
         unlabel_frame_names = [
-            max(1, unlabel_clip_start_frame + self.cfg.dataset.target_sampling_rate * i)
+            max(1, unlabel_clip_start_frame[i] + self.cfg.dataset.target_sampling_rate * i)
             for i in range(self.cfg.num_frames)
         ]
 
