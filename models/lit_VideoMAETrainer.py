@@ -75,6 +75,8 @@ class VideoMAETrainer(pl.LightningModule):
         bool_masked_pos = input["mask"]
         bool_masked_pos = bool_masked_pos.flatten(1).to(torch.bool)
 
+        print("Input shape:", batch.shape)  # 应为 [B, T, 3, H, W]
+
         with torch.no_grad():
             # calculate the predict label
             if self.cfg.data_module.modality.mode == "RGB":
