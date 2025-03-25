@@ -189,6 +189,9 @@ class TennisDataset(torch.utils.data.Dataset):
         source_frames = []
         unlabel_frames = []
 
+        # add
+        print(type(self.cfg.source_sampling_rate))  # 打印类型
+
         source_frame_names = [
             max(1, source_clip_start_frame + self.cfg.source_sampling_rate * i)
             for i in range(self.cfg.num_frames)
