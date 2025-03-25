@@ -96,8 +96,8 @@ C: 通道数。
         print("------original---------unlabel_frames-----------", unlabel_frames.shape)
 
         # add: 调整维度的顺序以适应原模型，把channel和t帧进行位置对调
-        source_frames = source_frames.permute(0, 2, 1, 3, 4)
-        unlabel_frames = unlabel_frames.permute(0, 2, 1, 3, 4)
+        # source_frames = source_frames.permute(0, 2, 1, 3, 4)
+        # unlabel_frames = unlabel_frames.permute(0, 2, 1, 3, 4)
 
         with torch.no_grad():
             # calculate the predict label
