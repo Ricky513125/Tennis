@@ -52,11 +52,20 @@ class VideoMAETrainer(pl.LightningModule):
                 p1=self.patch_size,
                 p2=self.patch_size,
             )
+            ''' 
+            这里使用 einops.rearrange 将 unnorm_videos 重新排列成patch-based 格式：
+            p0=2 表示时间轴（T 维度）以 2 帧 为一个 patch。
+            p1=self.patch_size，p2=self.patch_size，表示空间维度被分割成 patch_size × patch_size 的小块。
+(T' H' W'): 这是视频被划分成 patch 后的总 patch 数量。
+(p0 * p1 * p2): 每个 patch 内的像素点数量。
+C: 通道数。
+                            '''
             videos_norm = (
                 videos_squeeze - videos_squeeze.mean(dim=-2, keepdim=True)
             ) / (videos_squeeze.var(dim=-2, unbiased=True, keepdim=True).sqrt() + 1e-6)
             # we find that the mean is about 0.48 and standard deviation is about 0.08.
             videos_patch = rearrange(videos_norm, "b n p c -> b n (p c)")
+            # 将p*c 展平成一个向量
         else:
             videos_patch = rearrange(
                 unnorm_videos,
@@ -69,26 +78,33 @@ class VideoMAETrainer(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         input = batch
-        source_frames = input["source_frames"]
+        source_frames = input["source_frames"] # 有标签的视频帧(B,T, C, H, W) 表示B(Batch)个T帧，每帧C个通道(RGB)
         unlabel_frames = input["unlabel_frames"]
-        action_label = input["action_label"]
-        bool_masked_pos = input["mask"]
-        bool_masked_pos = bool_masked_pos.flatten(1).to(torch.bool)
+        action_label = input["action_label"] # 动作分类标签
+        bool_masked_pos = input["mask"] # 掩码标记，用于视频MAE的mask
+        bool_masked_pos = bool_masked_pos.flatten(1).to(torch.bool) # flatten(1) from to [B, T*H*W]，再转为bool类型
 
         # print("Input shape:", batch.shape)  # 应为 [B, T, 3, H, W]
         print("---------------source_frames-----------", source_frames.shape)
         print("---------------unlabel_frames-----------", unlabel_frames.shape)
 
+        # add: 调整维度的顺序以适应原模型，把channel和t帧进行位置对调
+        source_frames = source_frames.permute(0, 2, 1, 3, 4)
+        unlabel_frames = unlabel_frames.permute(0, 2, 1, 3, 4)
 
         with torch.no_grad():
             # calculate the predict label
+            # 计算图像均值和标准差， （用于归一化）
             if self.cfg.data_module.modality.mode == "RGB":
                 mean = torch.as_tensor(self.cfg.data_module.modality.mean)[
                     None, :, None, None, None
                 ].type_as(source_frames)
+                print('----mean----', mean, mean.shape)
+
                 std = torch.as_tensor(self.cfg.data_module.modality.std)[
                     None, :, None, None, None
                 ].type_as(source_frames)
+                print('----std----', std, std.shape)
             elif self.cfg.data_module.modality.mode == "flow":
                 mean = torch.as_tensor(self.cfg.data_module.modality.mean)[
                     None, :, None, None, None
@@ -103,12 +119,16 @@ class VideoMAETrainer(pl.LightningModule):
                 std = torch.as_tensor(self.cfg.data_module.modality.std)[
                     None, :, None, None, None
                 ].type_as(source_frames)
+
+            # 反归一化视频，将其恢复到原始数据范围[0, 1]
             unnorm_videos_source = source_frames * std + mean  # in [0, 1]
             unnorm_videos_target = unlabel_frames * std + mean  # in [0, 1]
 
+            # 将视频帧转为token
             videos_patch_source = self.normalize_videos(unnorm_videos_source)
             videos_patch_target = self.normalize_videos(unnorm_videos_target)
 
+            # b t c 只保留被mask的部分数据
             B, _, C = videos_patch_source.shape
             labels_source = videos_patch_source[bool_masked_pos].reshape(B, -1, C)
             labels_target = videos_patch_target[bool_masked_pos].reshape(B, -1, C)
