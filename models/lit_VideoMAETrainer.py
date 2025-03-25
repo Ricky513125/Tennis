@@ -44,12 +44,12 @@ class VideoMAETrainer(pl.LightningModule):
             param_group["lr"] = next_lr
 
     def normalize_videos(self, unnorm_videos):
-        print("Normalizing videos")
-        print("--------------------")
+        # print("Normalizing videos")
+        # print("--------------------")
         # print(unnorm_videos)
-        if unnorm_videos.shape[2] == 1 :
-            print(self.cfg)
-            print("--------------------")
+        # if unnorm_videos.shape[2] == 1 :
+            # print(self.cfg)
+            # print("--------------------")
 
         if self.normalize_target:
             videos_squeeze = rearrange(
@@ -92,8 +92,8 @@ C: 通道数。
         bool_masked_pos = bool_masked_pos.flatten(1).to(torch.bool) # flatten(1) from to [B, T*H*W]，再转为bool类型
 
         # print("Input shape:", batch.shape)  # 应为 [B, T, 3, H, W]
-        print("---------------source_frames-----------", source_frames.shape)
-        print("---------------unlabel_frames-----------", unlabel_frames.shape)
+        # print("---------------source_frames-----------", source_frames.shape)
+        # print("---------------unlabel_frames-----------", unlabel_frames.shape)
 
         # add: 调整维度的顺序以适应原模型，把channel和t帧进行位置对调
         source_frames = source_frames.permute(0, 2, 1, 3, 4)
@@ -106,12 +106,12 @@ C: 通道数。
                 mean = torch.as_tensor(self.cfg.data_module.modality.mean)[
                     None, :, None, None, None
                 ].type_as(source_frames)
-                print('----mean----', mean, mean.shape)
+                # print('----mean----', mean, mean.shape)
 
                 std = torch.as_tensor(self.cfg.data_module.modality.std)[
                     None, :, None, None, None
                 ].type_as(source_frames)
-                print('----std----', std, std.shape)
+                # print('----std----', std, std.shape)
             elif self.cfg.data_module.modality.mode == "flow":
                 mean = torch.as_tensor(self.cfg.data_module.modality.mean)[
                     None, :, None, None, None
@@ -127,9 +127,15 @@ C: 通道数。
                     None, :, None, None, None
                 ].type_as(source_frames)
 
+            print('---source_frames---', source_frames.shape)
+            print('---unlabel_frames---', unlabel_frames.shape)
+            print('---std---', std, '---std.shape---', std.shape)
+            print('---mean---', mean, '---mean.shape---', mean.shape)
+
             # 反归一化视频，将其恢复到原始数据范围[0, 1]
             unnorm_videos_source = source_frames * std + mean  # in [0, 1]
             unnorm_videos_target = unlabel_frames * std + mean  # in [0, 1]
+
 
             # 将视频帧转为token
             videos_patch_source = self.normalize_videos(unnorm_videos_source)
