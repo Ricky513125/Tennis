@@ -217,11 +217,17 @@ class PatchEmbed(nn.Module):
         )
 
     def forward(self, x, **kwargs):
+        print("Input shape:", x.shape)  # Debugging
         B, C, T, H, W = x.shape
         # FIXME look at relaxing size constraints
         # assert (
         #     H == self.img_size[0] and W == self.img_size[1]
         # ), f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
+        # add
+        x = x.permute(0, 2, 1, 3, 4)
+        # x.shape = (B, C, 1, H, W)
+        if x.shape[2] == 1:
+            x = x.repeat(1, 1, 2, 1, 1)  # 复制时间帧，变成 T=2
         x = self.proj(x).flatten(2).transpose(1, 2)
         return x
 

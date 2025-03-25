@@ -21,6 +21,9 @@ class VideoMAETrainer(pl.LightningModule):
         self.normalize_target = cfg.trainer.normalize_target
         self.patch_size = cfg.data_module.modality.patch_size[0]
         self.training_step_outputs = []
+        # ✅ 重新初始化分类层，适配 Tennis 类别
+        # self.model.classifier = nn.Linear(self.model.config.hidden_size, cfg.dataset.num_classes)
+
 
     def configure_optimizers(self):
         total_batch_size = self.scale_lr()
@@ -48,7 +51,7 @@ class VideoMAETrainer(pl.LightningModule):
             videos_squeeze = rearrange(
                 unnorm_videos,
                 "b c (t p0) (h p1) (w p2) -> b (t h w) (p0 p1 p2) c",
-                p0=2,
+                p0=1, #
                 p1=self.patch_size,
                 p2=self.patch_size,
             )
@@ -65,6 +68,7 @@ class VideoMAETrainer(pl.LightningModule):
                 p1=self.patch_size,
                 p2=self.patch_size,
             )
+        print("kanzhen li : videos_patch:", videos_patch.shape)
         return videos_patch
 
     def training_step(self, batch, batch_idx):
@@ -73,7 +77,9 @@ class VideoMAETrainer(pl.LightningModule):
         unlabel_frames = input["unlabel_frames"]
         action_label = input["action_label"]
         bool_masked_pos = input["mask"]
+        print("看这里", bool_masked_pos.shape)
         bool_masked_pos = bool_masked_pos.flatten(1).to(torch.bool)
+
 
         with torch.no_grad():
             # calculate the predict label
@@ -98,15 +104,24 @@ class VideoMAETrainer(pl.LightningModule):
                 std = torch.as_tensor(self.cfg.data_module.modality.std)[
                     None, :, None, None, None
                 ].type_as(source_frames)
-            unnorm_videos_source = source_frames * std + mean  # in [0, 1]
-            unnorm_videos_target = unlabel_frames * std + mean  # in [0, 1]
+            # unnorm_videos_source = source_frames * std + mean  # in [0, 1]
+            # unnorm_videos_target = unlabel_frames * std + mean  # in [0, 1]
+
+            # changed, add dimensions
+            unnorm_videos_source = source_frames * std.view(1, 1, 3, 1, 1) + mean.view(1, 1, 3, 1, 1)
+            unnorm_videos_target = unlabel_frames * std.view(1, 1, 3, 1, 1) + mean.view(1, 1, 3, 1, 1)
 
             videos_patch_source = self.normalize_videos(unnorm_videos_source)
             videos_patch_target = self.normalize_videos(unnorm_videos_target)
 
             B, _, C = videos_patch_source.shape
-            labels_source = videos_patch_source[bool_masked_pos].reshape(B, -1, C)
-            labels_target = videos_patch_target[bool_masked_pos].reshape(B, -1, C)
+            # add
+            new_masked_pos = bool_masked_pos
+            if bool_masked_pos.shape[1] > videos_patch_source.shape[1]:
+                new_masked_pos = bool_masked_pos[:, :videos_patch_source.shape[1]]
+
+            labels_source = videos_patch_source[new_masked_pos].reshape(B, -1, C)
+            labels_target = videos_patch_target[new_masked_pos].reshape(B, -1, C)
 
         preds_source, logits_source = self.model(source_frames, bool_masked_pos)
         preds_target, _ = self.model(unlabel_frames, bool_masked_pos)
