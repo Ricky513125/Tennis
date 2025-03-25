@@ -31,8 +31,10 @@ class PretrainVisionTransformerEncoder(nn.Module):
 
     def __init__(
         self,
-        img_size=224,
-        patch_size=16,
+        # img_size=224,
+        # patch_size=16,
+        img_size=(398, 224),  # 设为 tuple 以支持非正方形输入
+        patch_size = 14, # 使其能够被整除
         in_chans=3,
         num_classes=0,
         embed_dim=768,
@@ -159,7 +161,7 @@ class PretrainVisionTransformerDecoder(nn.Module):
 
     def __init__(
         self,
-        patch_size=16,
+        patch_size=14,
         num_classes=768,
         out_chans=3,
         embed_dim=768,
@@ -261,8 +263,9 @@ class PretrainVisionTransformer(nn.Module):
 
     def __init__(
         self,
-        img_size=224,
-        patch_size=16,
+        # img_size=224,
+        img_size=(398, 224),
+        patch_size=14,
         encoder_in_chans=3,
         encoder_num_classes=0,
         encoder_embed_dim=768,
@@ -383,7 +386,7 @@ class PretrainVisionTransformer(nn.Module):
 
         # TODO 这个地方完全重新生成了，不知道会不会有影响
         # 重新生成一个形状与 expand_pos_embed 匹配的 mask
-        mask = torch.randint(0, 2, (4, 16, 512), dtype=torch.bool, device="cuda")
+        # mask = torch.randint(0, 2, (4, 16, 512), dtype=torch.bool, device="cuda")
 
         x_vis = self.encoder(x, mask)  # [B, N_encoded, C_e]
         # N- 编码后的Token数量
@@ -408,7 +411,7 @@ class PretrainVisionTransformer(nn.Module):
         print('---expand_pos_embed---', expand_pos_embed.shape)
         print('---mask---', mask)
         print('---mask.shape---', mask.shape)
-        mask_reshaped = mask.reshape(4, 16, 512)  # 重新调整 mask 的形状
+        # mask_reshaped = mask.reshape(4, 16, 512)  # 重新调整 mask 的形状
         print('---mask.shape---', mask.shape)
         pos_emd_vis = expand_pos_embed[~mask].reshape(B, -1, C)
         pos_emd_mask = expand_pos_embed[mask].reshape(B, -1, C)
