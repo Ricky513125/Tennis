@@ -92,8 +92,8 @@ C: 通道数。
         bool_masked_pos = bool_masked_pos.flatten(1).to(torch.bool) # flatten(1) from to [B, T*H*W]，再转为bool类型
 
         # print("Input shape:", batch.shape)  # 应为 [B, T, 3, H, W]
-        # print("---------------source_frames-----------", source_frames.shape)
-        # print("---------------unlabel_frames-----------", unlabel_frames.shape)
+        print("------original---------source_frames-----------", source_frames.shape)
+        print("------original---------unlabel_frames-----------", unlabel_frames.shape)
 
         # add: 调整维度的顺序以适应原模型，把channel和t帧进行位置对调
         source_frames = source_frames.permute(0, 2, 1, 3, 4)
