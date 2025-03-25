@@ -54,13 +54,23 @@ class RandomMaskingGenerator:
 
 
 class TubeMaskingGenerator:
-
+    # 时间一致的掩码生成方法
     def __init__(self, input_size, mask_ratio):
         self.frames, self.height, self.width = input_size
-        self.num_patches_per_frame = self.height * self.width  # 14x14
-        self.total_patches = self.frames * self.num_patches_per_frame
-        self.num_masks_per_frame = int(mask_ratio * self.num_patches_per_frame)
-        self.total_masks = self.frames * self.num_masks_per_frame
+        print('---line1---')
+        print(self.frames, self.height, self.width)
+        self.num_patches_per_frame = self.height * self.width  # 14x14 # 每帧的patch数量
+        print('---line2---')
+        print(self.num_patches_per_frame.shape)
+        self.total_patches = self.frames * self.num_patches_per_frame # 整个视频的patch遮罩数量
+        print('---line3---')
+        print(self.total_patches)
+        self.num_masks_per_frame = int(mask_ratio * self.num_patches_per_frame) # 每帧要被遮挡的数量
+        print('---line4---')
+        print(self.num_masks_per_frame)
+        self.total_masks = self.frames * self.num_masks_per_frame # 视频中所有帧的mask数量
+        print('---line5---')
+        print(self.total_masks)
 
     def __repr__(self):
         repr_str = "Tube Masking: total patches {}, mask patches {}".format(
@@ -72,8 +82,12 @@ class TubeMaskingGenerator:
             np.zeros(self.num_patches_per_frame - self.num_masks_per_frame),
             np.ones(self.num_masks_per_frame),
         ])
+        print('---line6---')
+        print(mask_per_frame.shape)
         np.random.shuffle(mask_per_frame)
         mask = np.tile(mask_per_frame, (self.frames, 1))
+        print('---line6---')
+        print(mask.shape)
         return mask  # [196*8]
 
 
