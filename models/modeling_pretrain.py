@@ -349,7 +349,7 @@ class PretrainVisionTransformer(nn.Module):
         # 这是被替代的
         # self.pos_embed = get_sinusoid_encoding_table(
         #     self.encoder.patch_embed.num_patches, decoder_embed_dim
-        )
+        # )
 
         trunc_normal_(self.mask_token, std=0.02)
 
