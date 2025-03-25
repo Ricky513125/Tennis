@@ -234,6 +234,10 @@ class TennisDataset(torch.utils.data.Dataset):
             unlabel_frames.append(unlabel_frame)
 
         # [T, H, W, C] -> [T*C, H, W] -> [C, T, H, W]
+        print('-----transform------', self.transform)
+        print('-----------')
+        print(dir(self.transform))  # 打印所有可用的属性和方法
+        print('-----------')
         source_frames = self.transform.weak_aug(source_frames)
         unlabel_frames = self.transform.weak_aug(unlabel_frames)
         source_frames = source_frames.permute(1, 0, 2, 3)
