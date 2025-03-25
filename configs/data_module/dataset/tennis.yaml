@@ -8,3 +8,5 @@ target_sampling_rate: 1
 target_json_path: /mnt/ssd2/lingyu/Tennis/train.json
 unlabel_json_path: /mnt/ssd2/lingyu/Tennis/test.json
 
+# add
+source_sampling_rate: 1
