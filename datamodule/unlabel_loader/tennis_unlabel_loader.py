@@ -52,7 +52,7 @@ class TENNISUnlabelLoader(object):
 
     def get_frame_str(self, frame_name):
         """格式化帧文件名，例如 frame_0000000123.jpg"""
-        return f"frame_{str(frame_name).zfill(10)}.jpg"
+        return f"frame_{str(frame_name).zfill(6)}.jpg"
 
     def __len__(self):
         """返回未标注样本的数量"""

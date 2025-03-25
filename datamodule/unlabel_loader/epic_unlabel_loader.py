@@ -44,7 +44,7 @@ class EPICUnlabelLoader(object):
         logger.info(f"Constructing EPIC unlabel dataloader (size: {len(self._uid)})")
 
     def get_frame_str(self, frame_name):
-        return f"frame_{str(frame_name).zfill(10)}.jpg"
+        return f"frame_{str(frame_name).zfill(6)}.jpg"
 
     def __len__(self):
         return len(self._uid)
