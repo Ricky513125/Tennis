@@ -50,6 +50,7 @@ class RandomMaskingGenerator:
             np.ones(self.num_mask),
         ])
         np.random.shuffle(mask)
+        print('Random!!!')
         return mask  # [196*8]
 
 
@@ -124,4 +125,5 @@ class RunningCellMaskingGenerator:
 
     def __call__(self):
         mask = self.all_mask_maps[np.random.randint(self.cell_size)]
+        print('Running Cell Masking')
         return np.copy(mask)
