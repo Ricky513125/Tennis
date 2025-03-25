@@ -32,7 +32,7 @@ class TennisDataModule(pl.LightningDataModule):
         # self.val_dataset = TennisDataset(self.cfg, split="val")
         if stage == "fit" or stage is None:
             # 这里可能需要检查 transform_train 是否正确赋值
-            self.transform_train = self.get_train_transforms()
+            # self.transform_train = self.get_train_transforms()
             self.train_dataset = TennisDataset(
                 self.data_module_cfg,
                 self.transform_train,
