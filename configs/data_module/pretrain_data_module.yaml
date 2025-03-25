@@ -32,3 +32,6 @@ delete: []
 #  "09910d48-41f9-4a84-bb1b-1bc96de62286",
 #  "8e914832-2dd1-44fd-81f8-1b7e2ccd2402",
 #]
+
+# add
+source_sampling_rate: 1

@@ -23,3 +23,6 @@ batch_size: 4
 num_workers: 4
 
 target_json_path: /mnt/ssd2/lingyu/Tennis/train.json
+
+# add
+source_sampling_rate: 1

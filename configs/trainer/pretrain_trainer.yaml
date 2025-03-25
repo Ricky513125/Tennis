@@ -28,3 +28,5 @@ use_checkpoint: False
 
 # add
 batch_size: 4
+# add
+source_sampling_rate: 1
