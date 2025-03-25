@@ -398,7 +398,7 @@ class PretrainVisionTransformer(nn.Module):
 
         # we don't unshuffle the correct visible token order,
         # but shuffle the pos embedding accorddingly.
-        print('---pos_embed---', self.pos_embed)
+        print('---pos_embed---', self.pos_embed.shape)
         expand_pos_embed = (
             self.pos_embed.expand(B, -1, -1).type_as(x).to(x.device).clone().detach()
         )
