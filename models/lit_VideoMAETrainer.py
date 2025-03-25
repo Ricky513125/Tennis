@@ -47,7 +47,7 @@ class VideoMAETrainer(pl.LightningModule):
         print("Normalizing videos")
         print("--------------------")
         # print(unnorm_videos)
-        if unnorm_videos[2] == 1 :
+        if unnorm_videos.shape[2] == 1 :
             print(self.cfg)
             print("--------------------")
         if self.normalize_target:
