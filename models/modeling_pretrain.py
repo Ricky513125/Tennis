@@ -309,7 +309,7 @@ class PretrainVisionTransformer(nn.Module):
             tubelet_size=tubelet_size,
             use_checkpoint=use_checkpoint,
             use_learnable_pos_emb=use_learnable_pos_emb,
-        )
+        ) # 一个基于 Vision Transformer 的 encoder，用于提取特征。
 
         self.decoder = PretrainVisionTransformerDecoder(
             patch_size=patch_size,
@@ -329,21 +329,23 @@ class PretrainVisionTransformer(nn.Module):
             init_values=init_values,
             tubelet_size=tubelet_size,
             use_checkpoint=use_checkpoint,
-        )
+        ) # 用于将特征解码回原始输入形式。
 
         self.fc_dropout = (
             nn.Dropout(p=fc_drop_rate) if fc_drop_rate > 0 else nn.Identity()
         )
         self.fc_norm = norm_layer(encoder_embed_dim) if use_mean_pooling else None
-        self.head_action = nn.Linear(encoder_embed_dim, num_classes_action)
+        self.head_action = nn.Linear(encoder_embed_dim, num_classes_action) # 用于动作分类任务
 
+        # encoder to decoder
         self.encoder_to_decoder = nn.Linear(
             encoder_embed_dim, decoder_embed_dim, bias=False
         )
 
+        # Masked Autoencoder(MAE) 任务
         self.mask_token = nn.Parameter(torch.zeros(1, 1, decoder_embed_dim))
 
-
+        # 位置编码
         self.pos_embed = None  # 不再预先生成 用于动态生成， 基于不同视频的长度
 
         # 这是被替代的
@@ -370,20 +372,36 @@ class PretrainVisionTransformer(nn.Module):
         return {"pos_embed", "cls_token", "mask_token"}
 
     def forward(self, x, mask):
-        _, _, T, _, _ = x.shape
+        B, _, T, _, _ = x.shape
         print("--------------", x.shape)
+
+        # add 使用 Sinusoidal 位置编码 动态生成pos_embed
+        if self.pos_embed is None or self.pos_embed.shape[1] != T:
+            self.pos_embed = get_sinusoid_encoding_table(T, self.decoder.embed_dim).to(x.device)
+
+        # expand_pos_embed = self.pos_embed.expand(B, -1, -1).clone()
+
+
         x_vis = self.encoder(x, mask)  # [B, N_encoded, C_e]
+        # N- 编码后的Token数量
+        # C_e 编码后的特征维度e
         # classifier branch
         x = self.fc_norm(x_vis.mean(1))
+        # x_vis.mean(1): 对所有 token 取均值，得到视频级特征
+        # fc_norm: 归一化层。
         logits = self.head_action(self.fc_dropout(x))
+        # head_action: 线性分类头，输出 num_classes_action=204 维的分类结果
         # decoder branch
         x_vis = self.encoder_to_decoder(x_vis)  # [B, N_vis, C_d]
+        # encoder_to_decoder 是一个线性层，将 encoder 输出 (C_e=768) 投影到 decoder 维度 (C_d=512)。
         B, N, C = x_vis.shape
+
         # we don't unshuffle the correct visible token order,
         # but shuffle the pos embedding accorddingly.
         expand_pos_embed = (
             self.pos_embed.expand(B, -1, -1).type_as(x).to(x.device).clone().detach()
         )
+
         pos_emd_vis = expand_pos_embed[~mask].reshape(B, -1, C)
         pos_emd_mask = expand_pos_embed[mask].reshape(B, -1, C)
         x_full = torch.cat(
