@@ -381,6 +381,9 @@ class PretrainVisionTransformer(nn.Module):
 
         # expand_pos_embed = self.pos_embed.expand(B, -1, -1).clone()
 
+        # TODO 这个地方完全重新生成了，不知道会不会有影响
+        # 重新生成一个形状与 expand_pos_embed 匹配的 mask
+        mask = torch.randint(0, 2, (4, 16, 512), dtype=torch.bool, device="cuda")
 
         x_vis = self.encoder(x, mask)  # [B, N_encoded, C_e]
         # N- 编码后的Token数量
