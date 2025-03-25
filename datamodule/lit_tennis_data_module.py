@@ -16,7 +16,7 @@ class TennisDataModule(pl.LightningDataModule):
         self.mask_gen = MaskGeneration(cfg.data_module)
         # add
         self.transform_train = None
-        if self.mode == "rgb":
+        if self.mode == "RGB":
             self.transform_train = DataAugmentationForUnlabelRGB(
                 cfg, input_size=cfg.data_module.modality.input_size
             )

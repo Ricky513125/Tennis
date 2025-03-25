@@ -385,6 +385,11 @@ class PretrainVisionTransformer(nn.Module):
         )
         pos_emd_vis = expand_pos_embed[~mask].reshape(B, -1, C)
         pos_emd_mask = expand_pos_embed[mask].reshape(B, -1, C)
+
+        # add
+        print(f"x_vis shape: {x_vis.shape}, pos_emd_vis shape: {pos_emd_vis.shape}")
+        print(f"mask_token shape: {self.mask_token.shape}, pos_emd_mask shape: {pos_emd_mask.shape}")
+
         x_full = torch.cat(
             [x_vis + pos_emd_vis, self.mask_token + pos_emd_mask], dim=1
         )  # [B, N, C_d]
