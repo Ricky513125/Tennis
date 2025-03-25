@@ -149,9 +149,11 @@ class TennisDataset(torch.utils.data.Dataset):
 
     def _get_frame_unlabel(self, dir_to_img_frame, frame_name, mode, frames):
         if mode == "RGB":
-            path = dir_to_img_frame / Path(
-                self.unlabel_loader.get_frame_str(frame_name)
-            )
+            # path = dir_to_img_frame / Path(
+            #     self.unlabel_loader.get_frame_str(frame_name)
+            # )
+            # add
+            path = dir_to_img_frame / Path(str(frame_name).zfill(6) + ".jpg")
             print('_unlabel_frame_path', path)
             if path.exists():
                 frame = Image.open(str(path))
