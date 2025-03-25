@@ -134,7 +134,7 @@ class PretrainVisionTransformerEncoder(nn.Module):
         x = x + self.pos_embed.type_as(x).to(x.device).clone().detach()
 
         B, _, C = x.shape
-
+        print('forward_features: ', x.shape)
         if mask is not None:
             x = x[~mask].reshape(B, -1, C)  # ~mask means visible
 
