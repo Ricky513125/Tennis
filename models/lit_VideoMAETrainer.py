@@ -50,6 +50,7 @@ class VideoMAETrainer(pl.LightningModule):
         if unnorm_videos.shape[2] == 1 :
             print(self.cfg)
             print("--------------------")
+
         if self.normalize_target:
             videos_squeeze = rearrange(
                 unnorm_videos,

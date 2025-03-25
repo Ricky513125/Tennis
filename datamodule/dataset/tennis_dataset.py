@@ -116,6 +116,144 @@ class TennisDataset(torch.utils.data.Dataset):
         logger.info(f"构建 Tennis 数据集 (size: {len(self._clip_frame)})")
         logger.info(f"动作类别数: {len(self._action_list)}")
 
+
+
+    def _get_frame_source(self, dir_to_img_frame, frame_name, mode, frames):
+        if mode == "RGB":
+            path = dir_to_img_frame / Path(str(frame_name).zfill(6) + ".jpg")
+            if path.exists():
+                frame = Image.open(str(path))
+            else:
+                frame = frames[-1]
+        elif mode == "flow":
+            dir_to_flow_frame = str(dir_to_img_frame).replace(
+                "image_frame", "optical_flow"
+            )
+            path = Path(dir_to_flow_frame, "npy", f"{str(frame_name).zfill(6)}.npy")
+            if path.exists():
+                frame = np.load(str(path))
+            else:
+                frame = frames[-1]
+        elif mode == "pose":
+            dir_to_pose_frame = str(dir_to_img_frame).replace(
+                "image_frame", "hand-pose/heatmap"
+            )
+            path = Path(dir_to_pose_frame, f"{str(frame_name).zfill(6)}.npy")
+            if path.exists():
+                # frame = get_pose(str(path))
+                frame = np.load(str(path))
+            else:
+                frame = frames[-1]
+        return frame
+
+    def _get_frame_unlabel(self, dir_to_img_frame, frame_name, mode, frames):
+        if mode == "RGB":
+            path = dir_to_img_frame / Path(
+                self.unlabel_loader.get_frame_str(frame_name)
+            )
+            if path.exists():
+                frame = Image.open(str(path))
+            else:
+                frame = frames[-1]
+        elif mode == "flow":
+            dir_to_flow_frame = str(dir_to_img_frame).replace("RGB", "flow")
+            path = Path(
+                dir_to_flow_frame,
+                self.unlabel_loader.get_frame_str(frame_name).replace("jpg", "npy"),
+            )
+            if path.exists():
+                frame = np.load(str(path))
+            else:
+                frame = frames[-1]
+        elif mode == "pose":
+            dir_to_keypoint_frame = str(dir_to_img_frame).replace(
+                "RGB_frames", "hand-pose/heatmap"
+            )
+            path = Path(
+                dir_to_keypoint_frame,
+                self.unlabel_loader.get_frame_str(frame_name).replace("jpg", "npy"),
+            )
+            if path.exists():
+                frame = np.load(str(path))
+            else:
+                frame = frames[-1]
+        return frame
+    def _get_input(
+        self,
+        source_dir_to_img_frame,
+        source_clip_start_frame,
+        unlabel_dir_to_img_frame,
+        unlabel_clip_start_frame,
+    ):
+        # initialization
+        source_frames = []
+        unlabel_frames = []
+
+        source_frame_names = [
+            max(1, source_clip_start_frame + self.cfg.source_sampling_rate * i)
+            for i in range(self.cfg.num_frames)
+        ]
+        unlabel_frame_names = [
+            max(1, unlabel_clip_start_frame + self.cfg.dataset.target_sampling_rate * i)
+            for i in range(self.cfg.num_frames)
+        ]
+
+        for frame_name in source_frame_names:
+            source_frame = self._get_frame_source(
+                source_dir_to_img_frame, frame_name, self.mode, source_frames
+            )
+            source_frames.append(source_frame)
+
+        for frame_name in unlabel_frame_names:
+            unlabel_frame = self._get_frame_unlabel(
+                unlabel_dir_to_img_frame, frame_name, self.mode, unlabel_frames
+            )
+            unlabel_frames.append(unlabel_frame)
+
+        # [T, H, W, C] -> [T*C, H, W] -> [C, T, H, W]
+        source_frames = self.transform.weak_aug(source_frames)
+        unlabel_frames = self.transform.weak_aug(unlabel_frames)
+        source_frames = source_frames.permute(1, 0, 2, 3)
+        unlabel_frames = unlabel_frames.permute(1, 0, 2, 3)
+
+        # mask generation
+        mask = self.mask_gen()
+
+        return source_frames, unlabel_frames, mask
+
+    # def _get_input(self, source_dir, source_frames, unlabel_dir, unlabel_frames):
+    #     """加载 source 和 unlabel 数据，并生成 mask"""
+    #     # print(f"unlabel_frames type: {type(unlabel_frames)}, value: {unlabel_frames}")
+    #
+    #     source_images = []
+    #     for frame in source_frames:
+    #         # print("source_dir : ", source_dir)
+    #         img_path = Path(f"{source_dir}/{frame:06d}.jpg")
+    #         # print("img_path: ", img_path)
+    #         if img_path.exists():
+    #             img = Image.open(img_path).convert(self.mode)
+    #             source_images.append(self.transform(img))
+    #         else:
+    #             logger.warning(f"缺失图像 source: {img_path}")
+    #             source_images.append(torch.zeros(3, 224, 224))  # 用空白图填充
+    #
+    #     if isinstance(unlabel_frames, int):
+    #         unlabel_frames = [unlabel_frames]  # 转换为列表
+    #
+    #     unlabel_images = []
+    #     for frame in unlabel_frames:
+    #         img_path = Path(f"{unlabel_dir}/{frame:06d}.jpg")
+    #         if img_path.exists():
+    #             img = Image.open(img_path).convert(self.mode)
+    #             unlabel_images.append(self.transform(img))
+    #         else:
+    #             logger.warning(f"缺失图像 unlabel: {img_path}")
+    #             unlabel_images.append(torch.zeros(3, 224, 224))
+    #
+    #     mask = self.mask_gen()  # 生成掩码
+    #
+    #     return torch.stack(source_images), torch.stack(unlabel_images), mask
+
     def __getitem__(self, index):
         input = {}
 
@@ -169,36 +307,3 @@ class TennisDataset(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self._clip_frame)
-
-    def _get_input(self, source_dir, source_frames, unlabel_dir, unlabel_frames):
-        """加载 source 和 unlabel 数据，并生成 mask"""
-        # print(f"unlabel_frames type: {type(unlabel_frames)}, value: {unlabel_frames}")
-
-        source_images = []
-        for frame in source_frames:
-            # print("source_dir : ", source_dir)
-            img_path = Path(f"{source_dir}/{frame:06d}.jpg")
-            # print("img_path: ", img_path)
-            if img_path.exists():
-                img = Image.open(img_path).convert(self.mode)
-                source_images.append(self.transform(img))
-            else:
-                logger.warning(f"缺失图像 source: {img_path}")
-                source_images.append(torch.zeros(3, 224, 224))  # 用空白图填充
-
-        if isinstance(unlabel_frames, int):
-            unlabel_frames = [unlabel_frames]  # 转换为列表
-
-        unlabel_images = []
-        for frame in unlabel_frames:
-            img_path = Path(f"{unlabel_dir}/{frame:06d}.jpg")
-            if img_path.exists():
-                img = Image.open(img_path).convert(self.mode)
-                unlabel_images.append(self.transform(img))
-            else:
-                logger.warning(f"缺失图像 unlabel: {img_path}")
-                unlabel_images.append(torch.zeros(3, 224, 224))
-
-        mask = self.mask_gen()  # 生成掩码
-
-        return torch.stack(source_images), torch.stack(unlabel_images), mask
