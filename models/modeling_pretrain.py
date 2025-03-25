@@ -343,8 +343,12 @@ class PretrainVisionTransformer(nn.Module):
 
         self.mask_token = nn.Parameter(torch.zeros(1, 1, decoder_embed_dim))
 
-        self.pos_embed = get_sinusoid_encoding_table(
-            self.encoder.patch_embed.num_patches, decoder_embed_dim
+
+        self.pos_embed = None  # 不再预先生成 用于动态生成， 基于不同视频的长度
+
+        # 这是被替代的
+        # self.pos_embed = get_sinusoid_encoding_table(
+        #     self.encoder.patch_embed.num_patches, decoder_embed_dim
         )
 
         trunc_normal_(self.mask_token, std=0.02)
@@ -367,6 +371,7 @@ class PretrainVisionTransformer(nn.Module):
 
     def forward(self, x, mask):
         _, _, T, _, _ = x.shape
+        print("--------------", x.shape)
         x_vis = self.encoder(x, mask)  # [B, N_encoded, C_e]
         # classifier branch
         x = self.fc_norm(x_vis.mean(1))
@@ -387,6 +392,54 @@ class PretrainVisionTransformer(nn.Module):
         x = self.decoder(x_full, pos_emd_mask.shape[1])  # [B, N_mask, 3 * 16 * 16]
 
         return x, logits
+
+
+# 解决第一个问题， 添加当前使用类
+def VideoMAE_ViT_B_1600(ckpt_pth=None, **kwargs):
+    model = PretrainVisionTransformer(
+        encoder_embed_dim=1024,  # 原值 768 编码器的嵌入维度
+        encoder_depth=12, # 编码器层数(Transformer blocks 数量)
+        encoder_num_heads=12, # 注意力头数
+        encoder_num_classes=0, # 分类类别数（0 无分类头）
+        decoder_embed_dim=512,  # 原值 384 解码器
+        decoder_depth=4,
+        decoder_num_heads=6,
+        mlp_ratio=4, # mlp 扩展比例（隐藏层维度=embed_dim * mlp_ratio)
+        qkv_bias=True, # 是否在QKV计算中使用偏置
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), # 归一化层类型
+        **kwargs # 其他动态参数
+    )
+    model.default_cfg = _cfg()
+
+    if ckpt_pth is not None:
+        try:
+            checkpoint = torch.load(ckpt_pth, map_location="cpu")
+            state_dict = checkpoint.get("state_dict", checkpoint.get("model", checkpoint))
+
+            # 处理可能的 "module." 前缀问题
+            new_state_dict = {}
+            for k, v in state_dict.items():
+                new_key = k.replace("module.", "")
+                new_state_dict[new_key] = v
+
+            # **过滤掉维度不匹配的参数**
+            model_dict = model.state_dict()
+            filtered_state_dict = {
+                k: v for k, v in new_state_dict.items()
+                if k in model_dict and v.shape == model_dict[k].shape
+            }
+
+            # **只加载匹配的参数**
+            model_dict.update(filtered_state_dict)
+            model.load_state_dict(model_dict, strict=False)
+
+            print(f"Checkpoint partially loaded from {ckpt_pth}")
+            print(f"Loaded {len(filtered_state_dict)} / {len(new_state_dict)} parameters successfully.")
+
+        except Exception as e:
+            print(f"Failed to load checkpoint: {e}")
+
+    return model
 
 
 @register_model
