@@ -44,6 +44,9 @@ class VideoMAETrainer(pl.LightningModule):
             param_group["lr"] = next_lr
 
     def normalize_videos(self, unnorm_videos):
+        print("Normalizing videos")
+        print("--------------------")
+        print(unnorm_videos)
         if self.normalize_target:
             videos_squeeze = rearrange(
                 unnorm_videos,

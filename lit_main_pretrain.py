@@ -48,6 +48,7 @@ def main(cfg):
     # model
     model = VideoMAETrainer(cfg)
 
+
     if torch.cuda.is_available() and len(cfg.devices):
         print(f"Using {len(cfg.devices)} GPUs !")
 
