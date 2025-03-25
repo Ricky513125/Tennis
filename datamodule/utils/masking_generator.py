@@ -26,7 +26,9 @@ class TubeMaskingGenerator:
         print(mask_per_frame.shape)
         np.random.shuffle(mask_per_frame)
         # print('---shape')
+        print('---mask_per_frame---', mask_per_frame.shape)
         mask = np.tile(mask_per_frame, (self.frames, 1)).flatten()
+        print('---mask---', mask.shape)
         # print('TubeMasking!!!!')
         return mask
 
