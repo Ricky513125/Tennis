@@ -404,6 +404,7 @@ class PretrainVisionTransformer(nn.Module):
         )
         print('---expand_pos_embed---', expand_pos_embed.shape)
         print('---mask---', mask)
+        print('---mask.shape---', mask.shape)
         pos_emd_vis = expand_pos_embed[~mask].reshape(B, -1, C)
         pos_emd_mask = expand_pos_embed[mask].reshape(B, -1, C)
         x_full = torch.cat(
