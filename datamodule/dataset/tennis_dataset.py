@@ -206,12 +206,13 @@ class TennisDataset(torch.utils.data.Dataset):
             for i in range(self.cfg.num_frames)
         ]
 
-        print(type(self.cfg.dataset.target_sampling_rate))  # 打印类型
-        print('---num_frames', self.cfg.num_frames)
-        print('---clip_start_frame', unlabel_clip_start_frame)
+        # print(type(self.cfg.dataset.target_sampling_rate))  # 打印类型
+        # print('---num_frames', self.cfg.num_frames)
+        # print('---clip_start_frame', unlabel_clip_start_frame)
 
+        # TODO 这个unlabel的start_frame为int，只有一个，而source的有16个这个不要紧吗？
         unlabel_frame_names = [
-            max(1, unlabel_clip_start_frame[i] + self.cfg.dataset.target_sampling_rate * i)
+            max(1, unlabel_clip_start_frame + self.cfg.dataset.target_sampling_rate * i)
             for i in range(self.cfg.num_frames)
         ]
 
