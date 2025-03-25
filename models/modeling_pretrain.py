@@ -398,10 +398,12 @@ class PretrainVisionTransformer(nn.Module):
 
         # we don't unshuffle the correct visible token order,
         # but shuffle the pos embedding accorddingly.
+        print('---pos_embed---', self.pos_embed)
         expand_pos_embed = (
             self.pos_embed.expand(B, -1, -1).type_as(x).to(x.device).clone().detach()
         )
-
+        print('---expand_pos_embed---', expand_pos_embed.shape)
+        print('---mask---', mask)
         pos_emd_vis = expand_pos_embed[~mask].reshape(B, -1, C)
         pos_emd_mask = expand_pos_embed[mask].reshape(B, -1, C)
         x_full = torch.cat(
