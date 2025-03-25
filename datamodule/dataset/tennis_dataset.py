@@ -222,6 +222,7 @@ class TennisDataset(torch.utils.data.Dataset):
             )
             source_frames.append(source_frame)
 
+        print('---unlabel_frames---', unlabel_frames)
         for frame_name in unlabel_frame_names:
             unlabel_frame = self._get_frame_unlabel(
                 unlabel_dir_to_img_frame, frame_name, self.mode, unlabel_frames
