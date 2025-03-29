@@ -136,6 +136,10 @@ class PretrainVisionTransformerEncoder(nn.Module):
         x = x + self.pos_embed.type_as(x).to(x.device).clone().detach()
 
         B, _, C = x.shape
+        # 在forward_features方法中
+        if mask.shape[1] != x.shape[1]:  # 如果序列长度不匹配
+            mask = mask.reshape(B, -1)  # 或其他适当的reshape操作
+            mask = mask.expand(-1, x.shape[1])  # 扩展到正确长度
         print('forward_features: ', x.shape)
         if mask is not None:
             x = x[~mask].reshape(B, -1, C)  # ~mask means visible
