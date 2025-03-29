@@ -6,4 +6,4 @@ mode: RGB
 mean: [0.485, 0.456, 0.406]
 std: [0.229, 0.224, 0.225]
 patch_size: [14, 14]
-input_size: [398,224]
+input_size: [384,224] # 384, 224

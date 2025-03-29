@@ -18,12 +18,12 @@ def trunc_normal_(tensor, mean=0.0, std=1.0):
     __call_trunc_normal_(tensor, mean=mean, std=std, a=-std, b=std)
 
 
-__all__ = [
-    "pretrain_videomae_small_patch16_224",
-    "pretrain_videomae_base_patch16_224",
-    "pretrain_videomae_large_patch16_224",
-    "pretrain_videomae_huge_patch16_224",
-]
+# __all__ = [
+#     "pretrain_videomae_small_patch16_224",
+#     "pretrain_videomae_base_patch16_224",
+#     "pretrain_videomae_large_patch16_224",
+#     "pretrain_videomae_huge_patch16_224",
+# ]
 
 
 class PretrainVisionTransformerEncoder(nn.Module):
@@ -33,7 +33,7 @@ class PretrainVisionTransformerEncoder(nn.Module):
         self,
         # img_size=224,
         # patch_size=16,
-        img_size=(398, 224),  # 设为 tuple 以支持非正方形输入
+        img_size=(384, 224),  # 设为 tuple 以支持非正方形输入 384
         patch_size = 14, # 使其能够被整除
         in_chans=3,
         num_classes=0,
