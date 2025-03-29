@@ -165,9 +165,9 @@ class PretrainVisionTransformerDecoder(nn.Module):
 
     def __init__(
         self,
-        patch_size=14,
+        patch_size=16, # 空间 patch 大小 14
         num_classes=768,
-        out_chans=3,
+        out_chans=3, # 输出通道
         embed_dim=768,
         depth=12,
         num_heads=12,
@@ -180,9 +180,12 @@ class PretrainVisionTransformerDecoder(nn.Module):
         norm_layer=nn.LayerNorm,
         init_values=None,
         num_patches=196,
-        tubelet_size=2,
+        tubelet_size=2, # 时间维度的 patch 数
         use_checkpoint=False,
     ):
+        print(f"Config: patch_size={patch_size}, out_chans={out_chans}, tubelet_size={tubelet_size}")
+        print(f"Required num_classes: {out_chans * tubelet_size * patch_size ** 2}")
+
         super().__init__()
         self.num_classes = num_classes
         assert num_classes == out_chans * tubelet_size * patch_size**2
@@ -268,8 +271,8 @@ class PretrainVisionTransformer(nn.Module):
     def __init__(
         self,
         # img_size=224,
-        img_size=(398, 224),
-        patch_size=14,
+        img_size=(384, 224), # 384, 224
+        patch_size=16, # 14
         encoder_in_chans=3,
         encoder_num_classes=0,
         encoder_embed_dim=768,
@@ -430,6 +433,10 @@ class PretrainVisionTransformer(nn.Module):
 # 解决第一个问题， 添加当前使用类
 def VideoMAE_ViT_B_1600(ckpt_pth=None, **kwargs):
     model = PretrainVisionTransformer(
+        img_size=(384, 224),  # 确保输入尺寸是16的倍数
+        patch_size=16,  # 明确指定
+        decoder_num_classes=1536,
+
         encoder_embed_dim=1024,  # 原值 768 编码器的嵌入维度
         encoder_depth=12, # 编码器层数(Transformer blocks 数量)
         encoder_num_heads=12, # 注意力头数
