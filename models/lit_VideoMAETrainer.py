@@ -27,7 +27,7 @@ class VideoMAETrainer(pl.LightningModule):
 
         self.model = get_model(cfg)
         self.normalize_target = cfg.trainer.normalize_target
-        self.patch_size = cfg.data_module.modality.patch_size[0]
+        self.patch_size =16
         self.training_step_outputs = []
         assert H % self.patch_size == 0, f"高度{H}必须能被patch_size {self.patch_size}整除"
         assert W % self.patch_size == 0, f"宽度{W}必须能被patch_size {self.patch_size}整除"
