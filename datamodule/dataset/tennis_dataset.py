@@ -246,9 +246,11 @@ class TennisDataset(torch.utils.data.Dataset):
         # unlabel_frames = unlabel_frames.permute(1, 0, 2, 3)
 
         # 正确代码（确保形状为 [C, T, H, W]）： 元宝调整
-        source_frames = source_frames.permute(3, 0, 1, 2)  # 假设输入是 [T, H, W, C]
-        unlabel_frames = unlabel_frames.permute(3, 0, 1, 2)
+        # source_frames = source_frames.permute(3, 0, 1, 2)  # 假设输入是 [T, H, W, C]
+        # unlabel_frames = unlabel_frames.permute(3, 0, 1, 2)
 
+        source_frames = source_frames.permute(0, 3, 1, 2)  # 假设输入是 [T, H, W, C]
+        unlabel_frames = unlabel_frames.permute(0, 3, 1, 2)
 
         # mask generation
         mask = self.mask_gen()
