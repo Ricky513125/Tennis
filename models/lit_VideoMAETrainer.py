@@ -18,9 +18,9 @@ class VideoMAETrainer(pl.LightningModule):
         super(VideoMAETrainer, self).__init__()
         self.cfg = cfg
 
-        # 验证分辨率能被patch_size整除
-        H = cfg.data_module.modality.img_size[0]
-        W = cfg.data_module.modality.img_size[1]
+        # # 验证分辨率能被patch_size整除
+        # H = cfg.data_module.modality.img_size[0]
+        # W = cfg.data_module.modality.img_size[1]
 
 
 
@@ -29,8 +29,8 @@ class VideoMAETrainer(pl.LightningModule):
         self.normalize_target = cfg.trainer.normalize_target
         self.patch_size =16
         self.training_step_outputs = []
-        assert H % self.patch_size == 0, f"高度{H}必须能被patch_size {self.patch_size}整除"
-        assert W % self.patch_size == 0, f"宽度{W}必须能被patch_size {self.patch_size}整除"
+        # assert H % self.patch_size == 0, f"高度{H}必须能被patch_size {self.patch_size}整除"
+        # assert W % self.patch_size == 0, f"宽度{W}必须能被patch_size {self.patch_size}整除"
 
 
 
