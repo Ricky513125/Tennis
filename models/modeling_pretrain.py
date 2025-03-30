@@ -433,7 +433,7 @@ class PretrainVisionTransformer(nn.Module):
 # 解决第一个问题， 添加当前使用类
 def VideoMAE_ViT_B_1600(ckpt_pth=None, **kwargs):
     model = PretrainVisionTransformer(
-        img_size=(384, 224),  # 确保输入尺寸是16的倍数
+        # img_size=(384, 224),  # 确保输入尺寸是16的倍数 上面init有指定了
         patch_size=16,  # 明确指定
         decoder_num_classes=1536,
 
