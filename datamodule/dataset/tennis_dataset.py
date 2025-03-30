@@ -21,7 +21,7 @@ class TennisDataset(torch.utils.data.Dataset):
         self.num_frames = cfg.num_frames  # 固定采样的帧数
         self._construct_target_loader(cfg)
         self._construct_unlabel_loader(cfg)
-        self.patch_size = cfg.data_module.modality.patch_size  # 从配置读取
+        self.patch_size = 16  # 从配置读取
         self.tubelet_size = 2  # 时间分块大小
 
     def _construct_unlabel_loader(self, cfg):
