@@ -118,7 +118,12 @@ class TennisDataset(torch.utils.data.Dataset):
         logger.info(f"构建 Tennis 数据集 (size: {len(self._clip_frame)})")
         logger.info(f"动作类别数: {len(self._action_list)}")
 
-
+    def _generate_mask(self, H, W, T):
+        num_spatial_patches = (H // self.patch_size) * (W // self.patch_size)
+        num_temporal_blocks = T // self.tubelet_size
+        seq_length = num_spatial_patches * num_temporal_blocks
+        mask = torch.rand(seq_length) < 0.75  # mask_ratio=0.75
+        return mask
 
     def _get_frame_source(self, dir_to_img_frame, frame_name, mode, frames):
         if mode == "RGB":
@@ -249,11 +254,15 @@ class TennisDataset(torch.utils.data.Dataset):
         # source_frames = source_frames.permute(3, 0, 1, 2)  # 假设输入是 [T, H, W, C]
         # unlabel_frames = unlabel_frames.permute(3, 0, 1, 2)
 
-        source_frames = source_frames.permute(0, 3, 1, 2)  # 假设输入是 [T, H, W, C]
-        unlabel_frames = unlabel_frames.permute(0, 3, 1, 2)
+        # source_frames = source_frames.permute(0, 3, 1, 2)  # 假设输入是 [T, H, W, C]
+        # unlabel_frames = unlabel_frames.permute(0, 3, 1, 2)
 
         # mask generation
         mask = self.mask_gen()
+
+        # 二改
+        source_frames = source_frames.permute(0, 4, 1, 2, 3)  # [B, C, T, H, W]
+        unlabel_frames = unlabel_frames.permute(0, 4, 1, 2, 3)
 
         return source_frames, unlabel_frames, mask
 
@@ -314,6 +323,10 @@ class TennisDataset(torch.utils.data.Dataset):
         action_label_internal = self._action_label_internal[index]
         verb_label_internal = self._verb_label_internal[index]
         noun_label_internal = self._noun_label_internal[index]
+
+        _, _, T, H, W = source_frames.shape  # 假设已修正为 [B, C, T, H, W]
+        mask = self._generate_mask(H, W, T)
+
 
         assert self._action_list[action_label_internal] == (verb_label, noun_label)
         assert self._verb_list[verb_label_internal] == verb_label
