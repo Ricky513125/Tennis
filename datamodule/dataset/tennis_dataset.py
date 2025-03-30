@@ -324,7 +324,8 @@ class TennisDataset(torch.utils.data.Dataset):
         verb_label_internal = self._verb_label_internal[index]
         noun_label_internal = self._noun_label_internal[index]
 
-        _, _, T, H, W = source_frames.shape  # 假设已修正为 [B, C, T, H, W]
+        # _, _, T, H, W = source_frames.shape  # 假设已修正为 [B, C, T, H, W]
+        _, T, H, W = source_frames.shape
         mask = self._generate_mask(H, W, T)
 
 
