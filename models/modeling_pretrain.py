@@ -276,6 +276,8 @@ class PretrainVisionTransformer(nn.Module):
         self,
         # img_size=224,
         img_size=(384, 224), # 384, 224
+        h = 384,
+        w = 224,
         patch_size=16, # 14
         encoder_in_chans=3,
         encoder_num_classes=0,
@@ -302,6 +304,7 @@ class PretrainVisionTransformer(nn.Module):
         fc_drop_rate=0.5,
         use_mean_pooling=True,
         num_classes_action=204,
+
     ):
         super().__init__()
         self.encoder = PretrainVisionTransformerEncoder(
@@ -368,6 +371,11 @@ class PretrainVisionTransformer(nn.Module):
         # )
 
         trunc_normal_(self.mask_token, std=0.02)
+
+        # 元宝添加
+        h, w = img_size
+        self.grid_size = (h//patch_size, w//patch_size)
+        self.num_patches = self.grid_size[0] * self.grid_size[1]
 
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
