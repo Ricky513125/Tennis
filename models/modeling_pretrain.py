@@ -434,8 +434,8 @@ class PretrainVisionTransformer(nn.Module):
 def VideoMAE_ViT_B_1600(ckpt_pth=None, **kwargs):
     model = PretrainVisionTransformer(
         # img_size=(384, 224),  # 确保输入尺寸是16的倍数 上面init有指定了
-        patch_size=16,  # 明确指定
-        decoder_num_classes=1536,
+        # patch_size=16,  # 明确指定
+        # decoder_num_classes=1536,
 
         encoder_embed_dim=1024,  # 原值 768 编码器的嵌入维度
         encoder_depth=12, # 编码器层数(Transformer blocks 数量)
