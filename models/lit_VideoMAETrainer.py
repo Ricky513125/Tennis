@@ -167,6 +167,7 @@ C: 通道数。
             print('---std---', std, '---std.shape---', std.shape)
             print('---mean---', mean, '---mean.shape---', mean.shape)
 
+            print('lit_VideoMAETrainer.training_step', source_frames.shape)
             # 反归一化视频，将其恢复到原始数据范围[0, 1]
             unnorm_videos_source = source_frames * std + mean  # in [0, 1]
             unnorm_videos_target = unlabel_frames * std + mean  # in [0, 1]

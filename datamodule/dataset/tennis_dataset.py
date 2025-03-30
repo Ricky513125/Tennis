@@ -264,6 +264,7 @@ class TennisDataset(torch.utils.data.Dataset):
         # source_frames = source_frames.permute(0, 4, 1, 2, 3)  # [B, C, T, H, W]
         # unlabel_frames = unlabel_frames.permute(0, 4, 1, 2, 3)
 
+        print(f"修正后 source_frames 形状: {source_frames.shape}")  # 应为 [4, 3, 16, 224, 384]
         return source_frames, unlabel_frames, mask
 
     # def _get_input(self, source_dir, source_frames, unlabel_dir, unlabel_frames):
