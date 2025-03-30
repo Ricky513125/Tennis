@@ -188,6 +188,10 @@ class PretrainVisionTransformerDecoder(nn.Module):
 
         super().__init__()
         self.num_classes = num_classes
+        print(f"num_classes: {self.num_classes}")
+        print(f"out_chans: {out_chans}")
+        print(f"tubelet_size: {tubelet_size}")
+        print(f"patch_size: {patch_size}")
         assert num_classes == out_chans * tubelet_size * patch_size**2
         self.num_features = self.embed_dim = (
             embed_dim  # num_features for consistency with other models
