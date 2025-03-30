@@ -21,6 +21,8 @@ class TennisDataset(torch.utils.data.Dataset):
         self.num_frames = cfg.num_frames  # 固定采样的帧数
         self._construct_target_loader(cfg)
         self._construct_unlabel_loader(cfg)
+        self.patch_size = cfg.data_module.modality.patch_size  # 从配置读取
+        self.tubelet_size = 2  # 时间分块大小
 
     def _construct_unlabel_loader(self, cfg):
         self.unlabel_loader = get_unlabel_loader(cfg.dataset)
@@ -240,8 +242,13 @@ class TennisDataset(torch.utils.data.Dataset):
         # print('-----------')
         source_frames = self.transform.weak_aug(source_frames)
         unlabel_frames = self.transform.weak_aug(unlabel_frames)
-        source_frames = source_frames.permute(1, 0, 2, 3)
-        unlabel_frames = unlabel_frames.permute(1, 0, 2, 3)
+        # source_frames = source_frames.permute(1, 0, 2, 3)
+        # unlabel_frames = unlabel_frames.permute(1, 0, 2, 3)
+
+        # 正确代码（确保形状为 [C, T, H, W]）： 元宝调整
+        source_frames = source_frames.permute(3, 0, 1, 2)  # 假设输入是 [T, H, W, C]
+        unlabel_frames = unlabel_frames.permute(3, 0, 1, 2)
+
 
         # mask generation
         mask = self.mask_gen()

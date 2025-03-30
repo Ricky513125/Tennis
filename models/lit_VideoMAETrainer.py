@@ -65,8 +65,8 @@ class VideoMAETrainer(pl.LightningModule):
             # print("--------------------")
 
         # 添加输入形状检查
-        # B, T, C, H, W = unnorm_videos.shape
-        B, C, T, H, W = unnorm_videos.shape # **********
+        B, T, C, H, W = unnorm_videos.shape
+        # B, C, T, H, W = unnorm_videos.shape # **********
         print(f"输入视频形状: [B={B}, T={T}, C={C}, H={H}, W={W}]")
 
         # 计算预期分块数
