@@ -254,15 +254,15 @@ class TennisDataset(torch.utils.data.Dataset):
         # source_frames = source_frames.permute(3, 0, 1, 2)  # 假设输入是 [T, H, W, C]
         # unlabel_frames = unlabel_frames.permute(3, 0, 1, 2)
 
-        # source_frames = source_frames.permute(0, 3, 1, 2)  # 假设输入是 [T, H, W, C]
-        # unlabel_frames = unlabel_frames.permute(0, 3, 1, 2)
+        source_frames = source_frames.permute(0, 3, 1, 2)  # 假设输入是 [T, H, W, C]
+        unlabel_frames = unlabel_frames.permute(0, 3, 1, 2)
 
         # mask generation
         mask = self.mask_gen()
 
         # 二改
-        source_frames = source_frames.permute(0, 4, 1, 2, 3)  # [B, C, T, H, W]
-        unlabel_frames = unlabel_frames.permute(0, 4, 1, 2, 3)
+        # source_frames = source_frames.permute(0, 4, 1, 2, 3)  # [B, C, T, H, W]
+        # unlabel_frames = unlabel_frames.permute(0, 4, 1, 2, 3)
 
         return source_frames, unlabel_frames, mask
 
