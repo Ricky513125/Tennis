@@ -17,10 +17,22 @@ class VideoMAETrainer(pl.LightningModule):
     def __init__(self, cfg):
         super(VideoMAETrainer, self).__init__()
         self.cfg = cfg
+
+        # 验证分辨率能被patch_size整除
+        H = cfg.data_module.modality.img_size[0]
+        W = cfg.data_module.modality.img_size[1]
+        assert H % self.patch_size == 0, f"高度{H}必须能被patch_size {self.patch_size}整除"
+        assert W % self.patch_size == 0, f"宽度{W}必须能被patch_size {self.patch_size}整除"
+
+
+
         self.model = get_model(cfg)
         self.normalize_target = cfg.trainer.normalize_target
         self.patch_size = cfg.data_module.modality.patch_size[0]
         self.training_step_outputs = []
+
+
+
 
     def configure_optimizers(self):
         total_batch_size = self.scale_lr()
@@ -50,6 +62,15 @@ class VideoMAETrainer(pl.LightningModule):
         # if unnorm_videos.shape[2] == 1 :
             # print(self.cfg)
             # print("--------------------")
+
+        # 添加输入形状检查
+        B, T, C, H, W = unnorm_videos.shape
+        print(f"输入视频形状: [B={B}, T={T}, C={C}, H={H}, W={W}]")
+
+        # 计算预期分块数
+        expected_patches = (H // self.patch_size) * (W // self.patch_size) * (T // 2)
+        print(f"预期序列长度: {expected_patches}")
+
 
         if self.normalize_target:
             videos_squeeze = rearrange(
@@ -88,12 +109,24 @@ C: 通道数。
         source_frames = input["source_frames"] # 有标签的视频帧(B,T, C, H, W) 表示B(Batch)个T帧，每帧C个通道(RGB)
         unlabel_frames = input["unlabel_frames"]
         action_label = input["action_label"] # 动作分类标签
-        bool_masked_pos = input["mask"] # 掩码标记，用于视频MAE的mask
-        bool_masked_pos = bool_masked_pos.flatten(1).to(torch.bool) # flatten(1) from to [B, T*H*W]，再转为bool类型
 
-        # print("Input shape:", batch.shape)  # 应为 [B, T, 3, H, W]
-        print("------original---------source_frames-----------", source_frames.shape)
-        print("------original---------unlabel_frames-----------", unlabel_frames.shape)
+        # ========== 动态生成掩码 ==========
+        B, T, C, H, W = source_frames.shape
+        # 计算序列长度
+        seq_length = (H // self.patch_size) * (W // self.patch_size) * (T // 2)
+        # tubelet_size=2
+        # 生成随机掩码
+        mask_ratio = 0.75  # 或从配置中读取
+        bool_masked_pos = torch.rand(B, seq_length) < mask_ratio
+        bool_masked_pos = bool_masked_pos.to(source_frames.device)
+        # ========== 结束修改 ==========
+
+        # bool_masked_pos = input["mask"] # 掩码标记，用于视频MAE的mask
+        # bool_masked_pos = bool_masked_pos.flatten(1).to(torch.bool) # flatten(1) from to [B, T*H*W]，再转为bool类型
+        #
+        # # print("Input shape:", batch.shape)  # 应为 [B, T, 3, H, W]
+        # print("------original---------source_frames-----------", source_frames.shape)
+        # print("------original---------unlabel_frames-----------", unlabel_frames.shape)
 
         # add: 调整维度的顺序以适应原模型，把channel和t帧进行位置对调
         # source_frames = source_frames.permute(0, 2, 1, 3, 4)
