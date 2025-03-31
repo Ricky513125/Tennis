@@ -203,7 +203,7 @@ C: 通道数。
             print("patch_dim = ", patch_dim)
 
             print(f"[DEBUG] videos_patch_source 形状: {videos_patch_source.shape}")
-
+            print(f"[DEBUG] 预期重塑形状: [B={B}, num_masked_per_batch, patch_dim={patch_dim}]")
             # b t c 只保留被mask的部分数据
             B, _, C = videos_patch_source.shape
             labels_source = videos_patch_source[bool_masked_pos].reshape(B, -1, patch_dim)
