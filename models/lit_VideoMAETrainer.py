@@ -123,6 +123,9 @@ C: 通道数。
         B, C, T, H, W = source_frames.shape
         # 计算序列长度
         seq_length = (H // self.patch_size) * (W // self.patch_size) * (T // 2)
+        print("self.patch_size", self.patch_size)
+        print("H", H, " + W:", W)
+        print("seq_length: ", seq_length)
         # tubelet_size=2
         # 生成随机掩码
         mask_ratio = 0.75  # 或从配置中读取
