@@ -128,6 +128,11 @@ C: 通道数。
         mask_ratio = 0.75  # 或从配置中读取
         bool_masked_pos = torch.rand(B, seq_length) < mask_ratio
         bool_masked_pos = bool_masked_pos.to(source_frames.device)
+
+        # 验证形状
+
+        print(f"[DEBUG] bool_masked_pos 形状: {bool_masked_pos.shape}")
+
         # ========== 结束修改 ==========
 
         # bool_masked_pos = input["mask"] # 掩码标记，用于视频MAE的mask
@@ -189,6 +194,8 @@ C: 通道数。
             # 将视频帧转为token
             videos_patch_source = self.normalize_videos(unnorm_videos_source)
             videos_patch_target = self.normalize_videos(unnorm_videos_target)
+
+            print(f"[DEBUG] videos_patch_source 形状: {videos_patch_source.shape}")
 
             # b t c 只保留被mask的部分数据
             B, _, C = videos_patch_source.shape
