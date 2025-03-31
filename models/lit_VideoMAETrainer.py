@@ -120,7 +120,7 @@ C: 通道数。
         # ========== 动态生成掩码 ==========
         print("动态生成掩码", source_frames.shape) # 4, 16, 224, 3, 384
         # source_frames = rearrange()
-        B, T, C, H, W = source_frames.shape
+        B, C, T, H, W = source_frames.shape
         # 计算序列长度
         seq_length = (H // self.patch_size) * (W // self.patch_size) * (T // 2)
         # tubelet_size=2
