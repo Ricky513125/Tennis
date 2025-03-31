@@ -198,7 +198,9 @@ C: 通道数。
             videos_patch_source = self.normalize_videos(unnorm_videos_source)
             videos_patch_target = self.normalize_videos(unnorm_videos_target)
 
+
             patch_dim = 2 * 16 * 16 * C  # 例如 2 * 16 * 16 * 3=1536
+            print("patch_dim = ", patch_dim)
 
             print(f"[DEBUG] videos_patch_source 形状: {videos_patch_source.shape}")
 
