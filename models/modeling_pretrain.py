@@ -304,6 +304,7 @@ class PretrainVisionTransformer(nn.Module):
         fc_drop_rate=0.5,
         use_mean_pooling=True,
         num_classes_action=204,
+        num_frames=16,
 
     ):
         super().__init__()
@@ -377,7 +378,8 @@ class PretrainVisionTransformer(nn.Module):
         self.grid_size = (h//patch_size, w//patch_size)
         # self.num_patches = self.grid_size[0] * self.grid_size[1]
 
-        self.temporal_length = img_size[2] // 2  # 假设输入尺寸包含时间维度
+        # self.temporal_length = img_size[2] // 2  # 假设输入尺寸包含时间维度
+        self.temporal_length = num_frames // 2
         self.spatial_patches = self.grid_size[0] * self.grid_size[1]
         self.seq_length = self.temporal_length * self.spatial_patches
 
