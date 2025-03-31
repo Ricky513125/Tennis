@@ -118,6 +118,7 @@ C: 通道数。
         # print(f"VideoMAETrainer 调整后 source_frames 形状: {source_frames.shape}")  # 应为 [4, 3, 16, 224, 384]
 
         # ========== 动态生成掩码 ==========
+        print("动态生成掩码", source_frames.shape)
         B, T, C, H, W = source_frames.shape
         # 计算序列长度
         seq_length = (H // self.patch_size) * (W // self.patch_size) * (T // 2)
