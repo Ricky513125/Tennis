@@ -108,17 +108,18 @@ C: 通道数。
 
     def training_step(self, batch, batch_idx):
         input = batch
-        source_frames = input["source_frames"] # 有标签的视频帧(B,T, C, H, W) 表示B(Batch)个T帧，每帧C个通道(RGB)
-        unlabel_frames = input["unlabel_frames"]
+        # source_frames = input["source_frames"] # 有标签的视频帧(B,T, C, H, W) 表示B(Batch)个T帧，每帧C个通道(RGB)
+        # unlabel_frames = input["unlabel_frames"]
         action_label = input["action_label"] # 动作分类标签
 
-        # source_frames = input["source_frames"].permute(0, 2, 1, 3, 4)  # [B, C, T, H, W]
-        # unlabel_frames = input["unlabel_frames"].permute(0, 2, 1, 3, 4)
-        #
+        source_frames = input["source_frames"].permute(0, 2, 1, 3, 4)  # [B, C, T, H, W]
+        unlabel_frames = input["unlabel_frames"].permute(0, 2, 1, 3, 4)
+
         # print(f"VideoMAETrainer 调整后 source_frames 形状: {source_frames.shape}")  # 应为 [4, 3, 16, 224, 384]
 
         # ========== 动态生成掩码 ==========
-        print("动态生成掩码", source_frames.shape)
+        print("动态生成掩码", source_frames.shape) # 4, 16, 224, 3, 384
+        # source_frames = rearrange()
         B, T, C, H, W = source_frames.shape
         # 计算序列长度
         seq_length = (H // self.patch_size) * (W // self.patch_size) * (T // 2)
