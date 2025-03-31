@@ -140,7 +140,7 @@ class PretrainVisionTransformerEncoder(nn.Module):
         if mask.shape[1] != x.shape[1]:  # 如果序列长度不匹配
             mask = mask.reshape(B, -1)  # 或其他适当的reshape操作
             mask = mask.expand(-1, x.shape[1])  # 扩展到正确长度
-        print('forward_features: ', x.shape)
+        # print('forward_features: ', x.shape)
         if mask is not None:
             x = x[~mask].reshape(B, -1, C)  # ~mask means visible
 
@@ -183,15 +183,15 @@ class PretrainVisionTransformerDecoder(nn.Module):
         tubelet_size=2, # 时间维度的 patch 数
         use_checkpoint=False,
     ):
-        print(f"Config: patch_size={patch_size}, out_chans={out_chans}, tubelet_size={tubelet_size}")
-        print(f"Required num_classes: {out_chans * tubelet_size * patch_size ** 2}")
+        # print(f"Config: patch_size={patch_size}, out_chans={out_chans}, tubelet_size={tubelet_size}")
+        # print(f"Required num_classes: {out_chans * tubelet_size * patch_size ** 2}")
 
         super().__init__()
         self.num_classes = num_classes
-        print(f"num_classes: {self.num_classes}")
-        print(f"out_chans: {out_chans}")
-        print(f"tubelet_size: {tubelet_size}")
-        print(f"patch_size: {patch_size}")
+        # print(f"num_classes: {self.num_classes}")
+        # print(f"out_chans: {out_chans}")
+        # print(f"tubelet_size: {tubelet_size}")
+        # print(f"patch_size: {patch_size}")
         assert num_classes == out_chans * tubelet_size * patch_size**2
         self.num_features = self.embed_dim = (
             embed_dim  # num_features for consistency with other models
@@ -401,7 +401,7 @@ class PretrainVisionTransformer(nn.Module):
 
     def forward(self, x, mask):
         B, _, T, H, W = x.shape
-        print("--------------", x.shape)
+        # print("--------------", x.shape)
 
         # # add 使用 Sinusoidal 位置编码 动态生成pos_embed
         # if self.pos_embed is None or self.pos_embed.shape[1] != T:
@@ -440,15 +440,15 @@ class PretrainVisionTransformer(nn.Module):
 
         # we don't unshuffle the correct visible token order,
         # but shuffle the pos embedding accorddingly.
-        print('---pos_embed---', self.pos_embed.shape)
+        # print('---pos_embed---', self.pos_embed.shape)
         expand_pos_embed = (
             self.pos_embed.expand(B, -1, -1).type_as(x).to(x.device).clone().detach()
         )
-        print('---expand_pos_embed---', expand_pos_embed.shape)
-        print('---mask---', mask)
-        print('---mask.shape---', mask.shape)
+        # print('---expand_pos_embed---', expand_pos_embed.shape)
+        # print('---mask---', mask)
+        # print('---mask.shape---', mask.shape)
         # mask_reshaped = mask.reshape(4, 16, 512)  # 重新调整 mask 的形状
-        print('---mask.shape---', mask.shape)
+        # print('---mask.shape---', mask.shape)
         pos_emd_vis = expand_pos_embed[~mask].reshape(B, -1, C)
         pos_emd_mask = expand_pos_embed[mask].reshape(B, -1, C)
         x_full = torch.cat(

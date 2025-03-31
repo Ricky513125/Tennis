@@ -67,11 +67,11 @@ class VideoMAETrainer(pl.LightningModule):
         # 添加输入形状检查
         B, T, C, H, W = unnorm_videos.shape
         # B, C, T, H, W = unnorm_videos.shape # **********
-        print(f"输入视频形状: [B={B}, T={T}, C={C}, H={H}, W={W}]")
+        # print(f"输入视频形状: [B={B}, T={T}, C={C}, H={H}, W={W}]")
 
         # 计算预期分块数
         expected_patches = (H // self.patch_size) * (W // self.patch_size) * (T // 2)
-        print(f"预期序列长度: {expected_patches}")
+        # print(f"预期序列长度: {expected_patches}")
 
 
         if self.normalize_target:
@@ -118,14 +118,14 @@ C: 通道数。
         # print(f"VideoMAETrainer 调整后 source_frames 形状: {source_frames.shape}")  # 应为 [4, 3, 16, 224, 384]
 
         # ========== 动态生成掩码 ==========
-        print("动态生成掩码", source_frames.shape) # 4, 16, 224, 3, 384
+        # print("动态生成掩码", source_frames.shape) # 4, 16, 224, 3, 384
         # source_frames = rearrange()
         B, C, T, H, W = source_frames.shape
         # 计算序列长度
         seq_length = (H // self.patch_size) * (W // self.patch_size) * (T // 2)
-        print("self.patch_size", self.patch_size)
-        print("H", H, " + W:", W)
-        print("seq_length: ", seq_length)
+        # print("self.patch_size", self.patch_size)
+        # print("H", H, " + W:", W)
+        # print("seq_length: ", seq_length)
         # tubelet_size=2
         # 生成随机掩码
         mask_ratio = 0.75  # 或从配置中读取
@@ -142,7 +142,7 @@ C: 通道数。
 
         # 验证形状
 
-        print(f"[DEBUG] bool_masked_pos 形状: {bool_masked_pos.shape}")
+        # print(f"[DEBUG] bool_masked_pos 形状: {bool_masked_pos.shape}")
 
         # ========== 结束修改 ==========
 
@@ -150,8 +150,8 @@ C: 通道数。
         # bool_masked_pos = bool_masked_pos.flatten(1).to(torch.bool) # flatten(1) from to [B, T*H*W]，再转为bool类型
         #
         # print("Input shape:", batch.shape)  # 应为 [B, T, 3, H, W]
-        print("------这里是training_step的一开始-----original---------source_frames-----------", source_frames.shape)
-        print("------original---------unlabel_frames-----------", unlabel_frames.shape)
+        # print("------这里是training_step的一开始-----original---------source_frames-----------", source_frames.shape)
+        # print("------original---------unlabel_frames-----------", unlabel_frames.shape)
 
         # add: 调整维度的顺序以适应原模型，把channel和t帧进行位置对调
         # source_frames = source_frames.permute(0, 2, 1, 3, 4)
@@ -185,18 +185,18 @@ C: 通道数。
                     None, :, None, None, None
                 ].type_as(source_frames)
 
-            print('---source_frames---', source_frames.shape)
-            print('---unlabel_frames---', unlabel_frames.shape)
-            print('---std---', std, '---std.shape---', std.shape)
-            print('---mean---', mean, '---mean.shape---', mean.shape)
-
-            print('lit_VideoMAETrainer.training_step', source_frames.shape)
+            # print('---source_frames---', source_frames.shape)
+            # print('---unlabel_frames---', unlabel_frames.shape)
+            # print('---std---', std, '---std.shape---', std.shape)
+            # print('---mean---', mean, '---mean.shape---', mean.shape)
+            #
+            # print('lit_VideoMAETrainer.training_step', source_frames.shape)
             # 反归一化视频，将其恢复到原始数据范围[0, 1]
 
             source_frames = input["source_frames"].permute(0, 3, 1, 2, 4)  # [B, C, T, H, W]
             unlabel_frames = input["unlabel_frames"].permute(0, 3, 1, 2, 4)
 
-            print(f"VideoMAETrainer 调整后 source_frames 形状: {source_frames.shape}")  # 应为 [4, 3, 16, 224, 384]
+            # print(f"VideoMAETrainer 调整后 source_frames 形状: {source_frames.shape}")  # 应为 [4, 3, 16, 224, 384]
 
             unnorm_videos_source = source_frames * std + mean  # in [0, 1]
             unnorm_videos_target = unlabel_frames * std + mean  # in [0, 1]
@@ -208,10 +208,10 @@ C: 通道数。
 
 
             patch_dim = 2 * 16 * 16 * C  # 例如 2 * 16 * 16 * 3=1536
-            print("patch_dim = ", patch_dim)
-
-            print(f"[DEBUG] videos_patch_source 形状: {videos_patch_source.shape}")
-            print(f"[DEBUG] 预期重塑形状: [B={B}, num_masked_per_batch, patch_dim={patch_dim}]")
+            # print("patch_dim = ", patch_dim)
+            #
+            # print(f"[DEBUG] videos_patch_source 形状: {videos_patch_source.shape}")
+            # print(f"[DEBUG] 预期重塑形状: [B={B}, num_masked_per_batch, patch_dim={patch_dim}]")
             # b t c 只保留被mask的部分数据
             B, _, C = videos_patch_source.shape
             # labels_source = videos_patch_source[bool_masked_pos].reshape(B, -1, patch_dim)
