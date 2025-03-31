@@ -175,8 +175,8 @@ C: 通道数。
             print('lit_VideoMAETrainer.training_step', source_frames.shape)
             # 反归一化视频，将其恢复到原始数据范围[0, 1]
 
-            source_frames = input["source_frames"].permute(0, 2, 1, 3, 4)  # [B, C, T, H, W]
-            unlabel_frames = input["unlabel_frames"].permute(0, 2, 1, 3, 4)
+            source_frames = input["source_frames"].permute(0, 3, 1, 2, 4)  # [B, C, T, H, W]
+            unlabel_frames = input["unlabel_frames"].permute(0, 3, 1, 2, 4)
 
             print(f"VideoMAETrainer 调整后 source_frames 形状: {source_frames.shape}")  # 应为 [4, 3, 16, 224, 384]
 
