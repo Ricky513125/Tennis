@@ -129,7 +129,15 @@ C: 通道数。
         # tubelet_size=2
         # 生成随机掩码
         mask_ratio = 0.75  # 或从配置中读取
-        bool_masked_pos = torch.rand(B, seq_length) < mask_ratio
+        #
+        # bool_masked_pos = torch.rand(B, seq_length) < mask_ratio
+        # bool_masked_pos = bool_masked_pos.to(source_frames.device)
+
+        num_masked_per_batch = int(seq_length * mask_ratio)  # 每个批次固定掩码数
+        bool_masked_pos = torch.zeros(B, seq_length, dtype=torch.bool)
+        for i in range(B):
+            indices = torch.randperm(seq_length)[:num_masked_per_batch]
+            bool_masked_pos[i, indices] = True
         bool_masked_pos = bool_masked_pos.to(source_frames.device)
 
         # 验证形状
@@ -206,8 +214,10 @@ C: 通道数。
             print(f"[DEBUG] 预期重塑形状: [B={B}, num_masked_per_batch, patch_dim={patch_dim}]")
             # b t c 只保留被mask的部分数据
             B, _, C = videos_patch_source.shape
-            labels_source = videos_patch_source[bool_masked_pos].reshape(B, -1, patch_dim)
-            labels_target = videos_patch_target[bool_masked_pos].reshape(B, -1, patch_dim)
+            # labels_source = videos_patch_source[bool_masked_pos].reshape(B, -1, patch_dim)
+            # labels_target = videos_patch_target[bool_masked_pos].reshape(B, -1, patch_dim)
+            labels_source = videos_patch_source[bool_masked_pos].reshape(B, num_masked_per_batch, patch_dim)
+            labels_target = videos_patch_target[bool_masked_pos].reshape(B, num_masked_per_batch, patch_dim)
 
         preds_source, logits_source = self.model(source_frames, bool_masked_pos)
         preds_target, _ = self.model(unlabel_frames, bool_masked_pos)
