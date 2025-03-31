@@ -407,7 +407,7 @@ class PretrainVisionTransformer(nn.Module):
         # if self.pos_embed is None or self.pos_embed.shape[1] != T:
         #     self.pos_embed = get_sinusoid_encoding_table(T, self.decoder.embed_dim).to(x.device)
 
-        patch_size = self.patch_size
+        patch_size = 16
         # 计算时空分块后的序列长度
         t_chunks = T // 2
         h_chunks = H // patch_size
