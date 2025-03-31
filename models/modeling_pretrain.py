@@ -375,7 +375,11 @@ class PretrainVisionTransformer(nn.Module):
         # 元宝添加
         h, w = img_size
         self.grid_size = (h//patch_size, w//patch_size)
-        self.num_patches = self.grid_size[0] * self.grid_size[1]
+        # self.num_patches = self.grid_size[0] * self.grid_size[1]
+
+        self.temporal_length = img_size[2] // 2  # 假设输入尺寸包含时间维度
+        self.spatial_patches = self.grid_size[0] * self.grid_size[1]
+        self.seq_length = self.temporal_length * self.spatial_patches
 
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
@@ -394,14 +398,25 @@ class PretrainVisionTransformer(nn.Module):
         return {"pos_embed", "cls_token", "mask_token"}
 
     def forward(self, x, mask):
-        B, _, T, _, _ = x.shape
+        B, _, T, H, W = x.shape
         print("--------------", x.shape)
 
-        # add 使用 Sinusoidal 位置编码 动态生成pos_embed
-        if self.pos_embed is None or self.pos_embed.shape[1] != T:
-            self.pos_embed = get_sinusoid_encoding_table(T, self.decoder.embed_dim).to(x.device)
+        # # add 使用 Sinusoidal 位置编码 动态生成pos_embed
+        # if self.pos_embed is None or self.pos_embed.shape[1] != T:
+        #     self.pos_embed = get_sinusoid_encoding_table(T, self.decoder.embed_dim).to(x.device)
 
-        # expand_pos_embed = self.pos_embed.expand(B, -1, -1).clone()
+        patch_size = self.patch_size
+        # 计算时空分块后的序列长度
+        t_chunks = T // 2
+        h_chunks = H // patch_size
+        w_chunks = W // patch_size
+        seq_length = t_chunks * h_chunks * w_chunks
+
+        # 动态生成位置编码
+        if self.pos_embed is None or self.pos_embed.shape[1] != seq_length:
+            self.pos_embed = get_sinusoid_encoding_table(seq_length, self.decoder.embed_dim).to(x.device)
+
+        expand_pos_embed = self.pos_embed.expand(B, -1, -1).clone().detach()
 
         # TODO 这个地方完全重新生成了，不知道会不会有影响
         # 重新生成一个形状与 expand_pos_embed 匹配的 mask
