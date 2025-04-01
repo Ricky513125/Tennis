@@ -1,6 +1,6 @@
 hydra:
   run:
-    dir: ./output/${now:%Y-%m-%d}/${now:%H-%M-%S}/pretrain_rgb
+    dir: ./output/${now:%Y-%m-%d}/${now:%H-%M-%S}/pretrain_pose
 defaults:
   - _self_
   - trainer: pretrain_trainer
