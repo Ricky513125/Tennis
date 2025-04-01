@@ -10,7 +10,6 @@ from pytorch_lightning import Trainer, loggers
 
 from datamodule.lit_unlabel_combined_pretrain_data_module import (
     UnlabelCombinedPretrainDataModule,
-
 )
 
 from datamodule.lit_tennis_data_module import (
