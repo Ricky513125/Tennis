@@ -15,6 +15,10 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
+import traceback
+
+
+
 
 def validate_pkl_structure(data, filename):
     """验证PKL文件结构完整性"""
@@ -93,6 +97,20 @@ def main():
     input_dir = Path(args.input)
     pkl_files = list(input_dir.glob('*.pkl'))
     print(f"发现 {len(pkl_files)} 个PKL文件待处理")
+    success_count = 0
+    fail_count = 0
+
+    for pkl_file in pkl_files:
+        try:
+            # 你的处理逻辑
+            with open(pkl_file, 'rb') as f:
+                data = pickle.load(f)  # 如果报错，可能是编码问题，尝试 encoding='latin1'
+            # 转换和保存逻辑
+            success_count += 1
+        except Exception as e:
+            fail_count += 1
+            print(f"处理失败: {pkl_file}")
+            print(traceback.format_exc())  # 打印详细错误信息
 
     # 创建进程池
     task_args = [(f, args.output) for f in pkl_files]
