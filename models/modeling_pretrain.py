@@ -167,7 +167,7 @@ class PretrainVisionTransformerDecoder(nn.Module):
         self,
         patch_size=16, # 空间 patch 大小 14
         num_classes=768,
-        out_chans=3, # 输出通道
+        out_chans=2, # 输出通道 光流 2
         embed_dim=768,
         depth=12,
         num_heads=12,
