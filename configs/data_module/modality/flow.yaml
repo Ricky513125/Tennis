@@ -2,6 +2,6 @@
 # FLOW
 mode: flow
 patch_size: [16, 16]
-input_size: 224
+input_size: [224, 384]
 mean: [0.0507, 0.4671]
 std: [10.9280, 8.6857]

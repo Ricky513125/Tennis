@@ -192,17 +192,6 @@ class PretrainVisionTransformerDecoder(nn.Module):
         # print(f"out_chans: {out_chans}")
         # print(f"tubelet_size: {tubelet_size}")
         # print(f"patch_size: {patch_size}")
-
-        # modeling_pretrain.py
-        # # print(f"[DEBUG] 输入通道: {in_chans}")
-        # print(f"[DEBUG] 时间分块: {tubelet_size}")
-        # print(f"[DEBUG] 空间分块: {patch_size}x{patch_size}")
-        # print(f"[DEBUG] 需要 decoder_num_classes = {in_chans * tubelet_size * patch_size ** 2}")
-
-        print(
-            f"Dimension Check: {out_chans}*{tubelet_size}*{patch_size}^2 = {out_chans * tubelet_size * patch_size ** 2}")
-        print(f"decoder_num_classes = {num_classes}")
-
         assert num_classes == out_chans * tubelet_size * patch_size**2
         self.num_features = self.embed_dim = (
             embed_dim  # num_features for consistency with other models
