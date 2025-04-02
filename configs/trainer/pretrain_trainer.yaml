@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - modality: pose  # rgb, flow, pose
+  - modality: flow  # rgb, flow, pose
 
 # Model parameters
 model: VideoMAE_ViT_B_1600
