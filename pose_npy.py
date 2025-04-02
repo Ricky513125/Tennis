@@ -65,6 +65,15 @@ def process_single_file(pkl_path, output_root, fill_confidence=1.0, max_people=2
         output_dir = Path(output_root) / video_id / 'npy'
         output_dir.mkdir(parents=True, exist_ok=True)
 
+        # 处理形状数据（兼容tuple和numpy array）
+        def shape_to_list(shape_data):
+            if isinstance(shape_data, (tuple, list)):
+                return list(shape_data)
+            elif isinstance(shape_data, np.ndarray):
+                return shape_data.tolist()
+            else:
+                return []
+
         # 生成增强版元数据
         metadata = {
             "source_file": str(pkl_path),
@@ -78,8 +87,8 @@ def process_single_file(pkl_path, output_root, fill_confidence=1.0, max_people=2
                 "confidence_filled": fill_confidence if coord_dim == 2 else None
             },
             "processing_info": {
-                "original_resolution": data.get('original_shape', []).tolist(),
-                "resized_resolution": data.get('img_shape', []).tolist(),
+                "original_resolution": shape_to_list(data.get('original_shape', ())),
+                "resized_resolution": shape_to_list(data.get('img_shape', ())),
                 "normalized": False,
                 "max_people_processed": min(num_people, max_people)
             }
