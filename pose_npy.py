@@ -17,55 +17,71 @@ logging.basicConfig(
 
 
 def validate_pkl_structure(data, filename):
-    """验证实际PKL文件结构"""
+    """支持多人物和多种坐标格式的验证"""
     required_keys = ['keypoint', 'total_frames', 'frame_dir']
     for key in required_keys:
         if key not in data:
             raise ValueError(f"Invalid PKL structure in {filename}: Missing key '{key}'")
 
-    # 验证关键点维度 [N, K, 3]
-    if data['keypoint'].ndim != 3 or data['keypoint'].shape[2] != 3:
+    keypoints = data['keypoint']
+
+    # 允许的维度格式:
+    # - 单人: [N, K, 2] 或 [N, K, 3]
+    # - 多人: [M, N, K, 2] 或 [M, N, K, 3]
+    if keypoints.ndim not in (3, 4):
         raise ValueError(
             f"Keypoint format error in {filename}: "
-            f"Expected [N, K, 3], got {data['keypoint'].shape}"
+            f"Expected 3 or 4 dimensions, got {keypoints.ndim}"
         )
 
     # 验证帧数一致性
-    if len(data['keypoint']) != data['total_frames']:
+    expected_frames = data['total_frames']
+    actual_frames = keypoints.shape[-3] if keypoints.ndim == 3 else keypoints.shape[1]
+    if actual_frames != expected_frames:
         raise ValueError(
             f"Frame count mismatch in {filename}: "
-            f"Keypoints({len(data['keypoint'])}) vs total_frames({data['total_frames']})"
+            f"Keypoints({actual_frames}) vs total_frames({expected_frames})"
         )
 
 
-def process_single_file(pkl_path, output_root):
-    """处理单个PKL文件"""
+def process_single_file(pkl_path, output_root, fill_confidence=1.0, max_people=2):
+    """处理包含多人物数据的PKL文件"""
     try:
-        # 加载数据（兼容Python2/3）
         with open(pkl_path, 'rb') as f:
             data = pickle.load(f, encoding='latin1')
 
-        # 数据验证
         validate_pkl_structure(data, pkl_path.name)
 
+        # 获取关键点数据维度
+        keypoints = data['keypoint']
+        is_multi_person = keypoints.ndim == 4
+        num_people = keypoints.shape[0] if is_multi_person else 1
+        num_frames = data['total_frames']
+        num_kpts = keypoints.shape[-2]
+        coord_dim = keypoints.shape[-1]
+
         # 创建输出目录
-        video_id = data['frame_dir']  # 使用frame_dir作为唯一标识
+        video_id = data['frame_dir']
         output_dir = Path(output_root) / video_id / 'npy'
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # 生成元数据
+        # 生成增强版元数据
         metadata = {
             "source_file": str(pkl_path),
-            "video_info": {
-                "original_resolution": data.get('original_shape', []).tolist(),
-                "processed_resolution": data.get('img_shape', []).tolist(),
-                "total_frames": data['total_frames'],
-                "keypoints_per_frame": data['keypoint'].shape[1]
+            "structure": {
+                "multi_person": is_multi_person,
+                "num_people": num_people,
+                "num_frames": num_frames,
+                "num_keypoints": num_kpts,
+                "coordinate_dim": coord_dim,
+                "coordinate_meaning": ["x", "y", "confidence"][:coord_dim],
+                "confidence_filled": fill_confidence if coord_dim == 2 else None
             },
-            "data_attributes": {
-                "coordinate_system": "pixel",
-                "value_order": ["x", "y", "confidence"],
-                "normalized": False
+            "processing_info": {
+                "original_resolution": data.get('original_shape', []).tolist(),
+                "resized_resolution": data.get('img_shape', []).tolist(),
+                "normalized": False,
+                "max_people_processed": min(num_people, max_people)
             }
         }
 
@@ -73,11 +89,32 @@ def process_single_file(pkl_path, output_root):
         with (output_dir.parent / 'metadata.json').open('w') as f:
             json.dump(metadata, f, indent=2, ensure_ascii=False)
 
-        # 保存每帧关键点数据
-        for frame_idx, keypoints in enumerate(data['keypoint'], start=1):
-            # 转换为 float32 并保留三位小数
-            processed_data = np.round(keypoints.astype(np.float32), 3)
-            np.save(output_dir / f"{frame_idx:06d}.npy", processed_data)
+        # 处理多人物数据（最多处理max_people个）
+        for person_idx in range(min(num_people, max_people)):
+            person_dir = output_dir / f"person_{person_idx + 1}"
+            person_dir.mkdir(exist_ok=True)
+
+            # 提取单人数据
+            if is_multi_person:
+                person_kpts = keypoints[person_idx]  # [N, K, 2/3]
+            else:
+                person_kpts = keypoints
+
+            # 补充缺失的置信度
+            if coord_dim == 2:
+                padded_kpts = np.concatenate([
+                    person_kpts,
+                    np.full((*person_kpts.shape[:-1], 1), fill_confidence)
+                ], axis=-1)
+            else:
+                padded_kpts = person_kpts
+
+            # 保存每帧数据
+            for frame_idx, frame_data in enumerate(padded_kpts, start=1):
+                np.save(
+                    person_dir / f"{frame_idx:06d}.npy",
+                    np.round(frame_data.astype(np.float32), 3)
+                )
 
         return True
 
@@ -89,12 +126,12 @@ def process_single_file(pkl_path, output_root):
 
 
 def batch_processor(args):
-    """多进程包装函数"""
+    """多进程参数解包"""
     return process_single_file(*args)
 
 
 def main():
-    parser = argparse.ArgumentParser(description='TENNIS 骨骼数据转换工具')
+    parser = argparse.ArgumentParser(description='TENNIS 多人物骨骼数据转换工具')
     parser.add_argument('--input',
                         type=str,
                         default='/mnt/ssd2/lingyu/Tennis/data/TENNIS/skeletons/f3set-tennis',
@@ -109,7 +146,16 @@ def main():
                         help='并行工作进程数（默认：CPU核心数50%）')
     parser.add_argument('--skip_errors',
                         action='store_true',
-                        help='跳过错误文件继续处理')
+                        help='遇到错误继续处理后续文件')
+    parser.add_argument('--fill_confidence',
+                        type=float,
+                        default=1.0,
+                        help='为2D坐标补充的置信度值（默认：1.0）')
+    parser.add_argument('--max_people',
+                        type=int,
+                        default=2,
+                        help='最大处理人物数（默认：2）')
+
     args = parser.parse_args()
 
     # 准备文件列表
@@ -118,7 +164,7 @@ def main():
     print(f"▶ 发现 {len(pkl_files)} 个PKL文件待处理")
 
     # 创建进程池
-    task_args = [(f, args.output) for f in pkl_files]
+    task_args = [(f, args.output, args.fill_confidence, args.max_people) for f in pkl_files]
     success_count = 0
 
     with Pool(processes=args.workers) as pool:
@@ -146,14 +192,17 @@ def main():
 
     # 生成报告
     print("\n" + "=" * 50)
-    print(f"转换完成！成功: {success_count}, 失败: {len(pkl_files) - success_count}")
-    print(f" 输出目录结构示例:")
+    print(f"✅ 转换完成！成功: {success_count}, 失败: {len(pkl_files) - success_count}")
+    print(f"📁 输出目录结构示例:")
     print(f"  {args.output}/")
     print(f"  └── [video_id]/")
     print(f"      ├── metadata.json")
     print(f"      └── npy/")
-    print(f"          ├── 000001.npy (shape: [关键点数量, 3])")
-    print(f"          └── ...")
+    print(f"          ├── person_1/")
+    print(f"          │   ├── 000001.npy (shape: [17, 3])")
+    print(f"          │   └── ...")
+    print(f"          └── person_2/")
+    print(f"              └── ...")
     print("=" * 50)
 
 
