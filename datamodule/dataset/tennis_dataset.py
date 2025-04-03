@@ -224,6 +224,9 @@ class TennisDataset(torch.utils.data.Dataset):
             else:
                 raise FileNotFoundError(f"光流文件缺失: {path}")  # 严格报错，避免静默失败
 
+            print(f"光流数据形状: {frame.shape}")
+
+
         elif mode == "pose":
             dir_to_keypoint_frame = str(dir_to_img_frame).replace(
                 "RGB_frames", "hand-pose/heatmap"
