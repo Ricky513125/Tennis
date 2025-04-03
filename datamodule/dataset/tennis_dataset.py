@@ -142,13 +142,22 @@ class TennisDataset(torch.utils.data.Dataset):
             # path = Path(dir_to_flow_frame, "npy", f"{str(frame_name).zfill(6)}.npy")
             # print("-----path-----", path)
 
-            # 直接基于视频ID构建路径，而不是替换字符串
-            video_id = dir_to_img_frame.split("/")[-1]  # 例如 20190712-M-Wimbledon-SF-...
-            dir_to_flow_frame = f"/mnt/ssd2/lingyu/Tennis/data/TENNIS/tennis_flows/{video_id}"
+            # # 直接基于视频ID构建路径，而不是替换字符串
+            # video_id = dir_to_img_frame.split("/")[-1]  # 例如 20190712-M-Wimbledon-SF-...
+            # dir_to_flow_frame = f"/mnt/ssd2/lingyu/Tennis/data/TENNIS/tennis_flows/{video_id}"
+            #
+            # # 构建NPY文件路径（注意文件名格式匹配）
+            # path = Path(dir_to_flow_frame, f"pair_{str(frame_name).zfill(5)}.npy")  # 00214 -> 5位补零
+            #
+            # print("-----Final flow path-----", path)
 
-            # 构建NPY文件路径（注意文件名格式匹配）
-            path = Path(dir_to_flow_frame, f"pair_{str(frame_name).zfill(5)}.npy")  # 00214 -> 5位补零
+            # 或者更高效的方式：直接使用 Path 的 .name 属性
+            video_id = dir_to_img_frame.name  # 直接获取目录名
 
+            dir_to_flow_frame = Path("/mnt/ssd2/lingyu/Tennis/data/TENNIS/tennis_flows") / video_id
+
+            # 构建光流文件路径
+            path = dir_to_flow_frame / f"pair_{str(frame_name).zfill(5)}.npy"
             print("-----Final flow path-----", path)
 
             if path.exists():
