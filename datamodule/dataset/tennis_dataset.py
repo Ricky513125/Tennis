@@ -138,6 +138,7 @@ class TennisDataset(torch.utils.data.Dataset):
                 "image_frame", "optical_flow"
             )
             path = Path(dir_to_flow_frame, "npy", f"{str(frame_name).zfill(6)}.npy")
+            print("-----path-----", path)
             if path.exists():
                 frame = np.load(str(path))
             else:

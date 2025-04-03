@@ -373,7 +373,7 @@ class PretrainVisionTransformer(nn.Module):
 
         trunc_normal_(self.mask_token, std=0.02)
 
-        # 元宝添加
+        # 添加
         h, w = img_size
         self.grid_size = (h//patch_size, w//patch_size)
         # self.num_patches = self.grid_size[0] * self.grid_size[1]
