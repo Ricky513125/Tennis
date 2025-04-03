@@ -134,13 +134,23 @@ class TennisDataset(torch.utils.data.Dataset):
             else:
                 frame = frames[-1]
         elif mode == "flow":
-            dir_to_flow_frame = str(dir_to_img_frame).replace(
-                "image_frame", "optical_flow"
-            )
-            print("-----dir_to_flow_frame-----", dir_to_flow_frame)
+            # dir_to_flow_frame = str(dir_to_img_frame).replace(
+            #     "image_frame", "optical_flow"
+            # )
+            # print("-----dir_to_flow_frame-----", dir_to_flow_frame)
+            #
+            # path = Path(dir_to_flow_frame, "npy", f"{str(frame_name).zfill(6)}.npy")
+            # print("-----path-----", path)
 
-            path = Path(dir_to_flow_frame, "npy", f"{str(frame_name).zfill(6)}.npy")
-            print("-----path-----", path)
+            # 直接基于视频ID构建路径，而不是替换字符串
+            video_id = dir_to_img_frame.split("/")[-1]  # 例如 20190712-M-Wimbledon-SF-...
+            dir_to_flow_frame = f"/mnt/ssd2/lingyu/Tennis/data/TENNIS/tennis_flows/{video_id}"
+
+            # 构建NPY文件路径（注意文件名格式匹配）
+            path = Path(dir_to_flow_frame, f"pair_{str(frame_name).zfill(5)}.npy")  # 00214 -> 5位补零
+
+            print("-----Final flow path-----", path)
+
             if path.exists():
                 frame = np.load(str(path))
             else:
