@@ -210,7 +210,8 @@ class TennisDataset(torch.utils.data.Dataset):
 
             # 将frame_name转换为整数，并格式化为5位数字
             # 假设frame_name为字符串"41"或整数41，需要统一处理
-            frame_id = int(frame_name.split(".")[0])  # 如果frame_name是"000041.jpg"，得到41
+            # frame_id = int(frame_name.split(".")[0])  # 如果frame_name是"000041.jpg"，得到41
+            frame_id = int(frame_name)
             flow_filename = f"pair_{frame_id:05d}.npy"  # 生成 pair_00041.npy
 
             path = flow_video_dir / flow_filename
