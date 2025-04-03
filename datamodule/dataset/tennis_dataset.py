@@ -158,11 +158,12 @@ class TennisDataset(torch.utils.data.Dataset):
 
             # 构建光流文件路径
             path = dir_to_flow_frame / f"pair_{str(frame_name).zfill(5)}.npy"
-            print("-----Final flow path-----", path)
+            # print("-----Final flow path-----", path)
 
             if path.exists():
                 frame = np.load(str(path))
             else:
+
                 frame = frames[-1]
         elif mode == "pose":
             dir_to_pose_frame = str(dir_to_img_frame).replace(
@@ -189,15 +190,39 @@ class TennisDataset(torch.utils.data.Dataset):
             else:
                 frame = frames[-1]
         elif mode == "flow":
-            dir_to_flow_frame = str(dir_to_img_frame).replace("RGB", "flow")
-            path = Path(
-                dir_to_flow_frame,
-                self.unlabel_loader.get_frame_str(frame_name).replace("jpg", "npy"),
-            )
+            # dir_to_flow_frame = str(dir_to_img_frame).replace("RGB", "flow")
+            # path = Path(
+            #     dir_to_flow_frame,
+            #     self.unlabel_loader.get_frame_str(frame_name).replace("jpg", "npy"),
+            # )
+            # if path.exists():
+            #     frame = np.load(str(path))
+            # else:
+            #     frame = frames[-1]
+
+            # 关键修改：直接基于video_id构造光流路径
+            # 假设dir_to_img_frame结构为：/path/to/RGB_frames/{video_id}
+            video_id = dir_to_img_frame.name  # 从RGB路径提取video_id（例如 "20230129-M-Australian_Open-F-Novak_Djokovic-Stefanos_Tsitsipas_96814_97030"）
+
+            # 构建光流文件路径
+            flow_base_dir = Path("/mnt/ssd2/lingyu/Tennis/data/TENNIS/tennis_flows")
+            flow_video_dir = flow_base_dir / video_id
+
+            # 将frame_name转换为整数，并格式化为5位数字
+            # 假设frame_name为字符串"41"或整数41，需要统一处理
+            frame_id = int(frame_name.split(".")[0])  # 如果frame_name是"000041.jpg"，得到41
+            flow_filename = f"pair_{frame_id:05d}.npy"  # 生成 pair_00041.npy
+
+            path = flow_video_dir / flow_filename
+
+            # 调试输出
+            print(f"Loading flow: {path}")
+
             if path.exists():
                 frame = np.load(str(path))
             else:
-                frame = frames[-1]
+                raise FileNotFoundError(f"光流文件缺失: {path}")  # 严格报错，避免静默失败
+
         elif mode == "pose":
             dir_to_keypoint_frame = str(dir_to_img_frame).replace(
                 "RGB_frames", "hand-pose/heatmap"
