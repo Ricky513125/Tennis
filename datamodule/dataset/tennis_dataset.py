@@ -217,14 +217,14 @@ class TennisDataset(torch.utils.data.Dataset):
             path = flow_video_dir / flow_filename
 
             # 调试输出
-            print(f"Loading flow: {path}")
+            # print(f"Loading flow: {path}")
 
             if path.exists():
                 frame = np.load(str(path))
             else:
                 raise FileNotFoundError(f"光流文件缺失: {path}")  # 严格报错，避免静默失败
 
-            print(f"光流数据形状: {frame.shape}")
+            print(f"光流数据形状: {frame.shape}") # (2, 224, 398)
 
 
         elif mode == "pose":
@@ -251,18 +251,13 @@ class TennisDataset(torch.utils.data.Dataset):
         source_frames = []
         unlabel_frames = []
 
-        # add
-        # print(type(self.cfg.source_sampling_rate))  # 打印类型
-        # print('---num_frames', self.cfg.num_frames)
-        # print('---clip_start_frame', source_clip_start_frame)
-        # source_frame_names = [
-        #     max(1, source_clip_start_frame + self.cfg.source_sampling_rate * i)
-        #     for i in range(self.cfg.num_frames)
-        # ]  # original one
-        # unlabel_frame_names = [
-        #     max(1, unlabel_clip_start_frame + self.cfg.dataset.target_sampling_rate * i)
-        #     for i in range(self.cfg.num_frames)
-        # ]
+        # 假设 self.modality 是 "RGB" 或 "flow"
+        if self.mode == "RGB":
+            transform = self.transform_rgb  # 使用RGB的预处理（3通道）
+        elif self.mode == "flow":
+            transform = self.transform_flow  # 使用光流的预处理（2通道）
+
+
         source_frame_names = [
             max(1, source_clip_start_frame[i] + self.cfg.source_sampling_rate * i)
             for i in range(self.cfg.num_frames)
@@ -298,58 +293,18 @@ class TennisDataset(torch.utils.data.Dataset):
         # print('-----------')
         source_frames = self.transform.weak_aug(source_frames)
         unlabel_frames = self.transform.weak_aug(unlabel_frames)
-        # source_frames = source_frames.permute(1, 0, 2, 3)
-        # unlabel_frames = unlabel_frames.permute(1, 0, 2, 3)
 
-        # 正确代码（确保形状为 [C, T, H, W]）： 元宝调整
-        # source_frames = source_frames.permute(3, 0, 1, 2)  # 假设输入是 [T, H, W, C]
-        # unlabel_frames = unlabel_frames.permute(3, 0, 1, 2)
-
+        print(f"预处理后 source_frames 形状: {source_frames.shape}")  # 应为 [T, C=2, 224, 384]
         source_frames = source_frames.permute(0, 3, 1, 2)  # 假设输入是 [T, H, W, C]
         unlabel_frames = unlabel_frames.permute(0, 3, 1, 2)
 
         # mask generation
         mask = self.mask_gen()
 
-        # 二改
-        # source_frames = source_frames.permute(0, 4, 1, 2, 3)  # [B, C, T, H, W]
-        # unlabel_frames = unlabel_frames.permute(0, 4, 1, 2, 3)
 
         # print(f"修正后 source_frames 形状: {source_frames.shape}")  # 应为 [4, 3, 16, 224, 384]
         return source_frames, unlabel_frames, mask
 
-    # def _get_input(self, source_dir, source_frames, unlabel_dir, unlabel_frames):
-    #     """加载 source 和 unlabel 数据，并生成 mask"""
-    #     # print(f"unlabel_frames type: {type(unlabel_frames)}, value: {unlabel_frames}")
-    #
-    #     source_images = []
-    #     for frame in source_frames:
-    #         # print("source_dir : ", source_dir)
-    #         img_path = Path(f"{source_dir}/{frame:06d}.jpg")
-    #         # print("img_path: ", img_path)
-    #         if img_path.exists():
-    #             img = Image.open(img_path).convert(self.mode)
-    #             source_images.append(self.transform(img))
-    #         else:
-    #             logger.warning(f"缺失图像 source: {img_path}")
-    #             source_images.append(torch.zeros(3, 224, 224))  # 用空白图填充
-    #
-    #     if isinstance(unlabel_frames, int):
-    #         unlabel_frames = [unlabel_frames]  # 转换为列表
-    #
-    #     unlabel_images = []
-    #     for frame in unlabel_frames:
-    #         img_path = Path(f"{unlabel_dir}/{frame:06d}.jpg")
-    #         if img_path.exists():
-    #             img = Image.open(img_path).convert(self.mode)
-    #             unlabel_images.append(self.transform(img))
-    #         else:
-    #             logger.warning(f"缺失图像 unlabel: {img_path}")
-    #             unlabel_images.append(torch.zeros(3, 224, 224))
-    #
-    #     mask = self.mask_gen()  # 生成掩码
-    #
-    #     return torch.stack(source_images), torch.stack(unlabel_images), mask
 
     def __getitem__(self, index):
         input = {}

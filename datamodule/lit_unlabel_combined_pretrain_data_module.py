@@ -27,7 +27,7 @@ class UnlabelCombinedPretrainDataModule(pl.LightningDataModule):
         elif self.mode == "flow" or self.mode == "pose":
             self.transform_train = DataAugmentationForUnlabelMM(
                 cfg,
-                mean=cfg.data_module.modality.mean,
+                mean=cfg.data_module.modality .mean,
                 std=cfg.data_module.modality.std,
             )
 

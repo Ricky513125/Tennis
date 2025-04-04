@@ -179,6 +179,15 @@ class DataAugmentationForUnlabelMM(object):
         self._construct_weak_aug()
         self._construct_strong_aug()
 
+        print("DataAugmentationForUnlabelMM")
+
+        self.transform = transforms.Compose([
+            transforms.ToPILImage(),  # 将 numpy 数组或张量转为 PIL 图像
+            transforms.Resize([224, 384]),  # 调整为 (H, W) = (224, 384)
+            transforms.ToTensor(),  # 转换为张量 [C, H, W]
+            transforms.Normalize(mean=self.mean, std=self.std),
+        ])
+
     def _construct_weak_aug(self):
         self.weak_aug = transforms.Compose(
             [
