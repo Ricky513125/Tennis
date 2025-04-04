@@ -178,7 +178,7 @@ class DataAugmentationForUnlabelMM(object):
         self.std = std
         self._construct_weak_aug()
         self._construct_strong_aug()
-
+        self.input_size = [224, 384]
         self.mean = torch.tensor(mean).view(-1, 1, 1)  # 形状 [2, 1, 1]
         self.std = torch.tensor(std).view(-1, 1, 1)  # 形状 [2, 1, 1]
 
@@ -200,7 +200,7 @@ class DataAugmentationForUnlabelMM(object):
         resized_frames = [
             torch.nn.functional.interpolate(
                 frame.unsqueeze(0),  # 添加 batch 维度 [1, C, H, W]
-                size=[224, 384],
+                size=self.input_size,
                 mode="bilinear",
                 align_corners=False,
             ).squeeze(0)  # 移除 batch 维度 [C, H, W]
