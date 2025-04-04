@@ -179,9 +179,6 @@ class DataAugmentationForUnlabelMM(object):
         self._construct_weak_aug()
         self._construct_strong_aug()
 
-        self.mean = torch.tensor(mean).view(-1, 1, 1)  # 形状 [2, 1, 1]
-        self.std = torch.tensor(std).view(-1, 1, 1)  # 形状 [2, 1, 1]
-
         # print("DataAugmentationForUnlabelMM")
         #
         # self.transform = transforms.Compose([
@@ -190,27 +187,6 @@ class DataAugmentationForUnlabelMM(object):
         #     transforms.ToTensor(),  # 转换为张量 [C, H, W]
         #     transforms.Normalize(mean=self.mean, std=self.std),
         # ])
-
-    def weak_aug(self, frames):
-        """
-        frames: 列表，每个元素是形状为 [C=2, H, W] 的张量
-        返回: 形状为 [T, C=2, H, W] 的张量
-        """
-        # 调整尺寸（如果需要）
-        resized_frames = [
-            torch.nn.functional.interpolate(
-                frame.unsqueeze(0),  # 添加 batch 维度 [1, C, H, W]
-                size=self.input_size,
-                mode="bilinear",
-                align_corners=False,
-            ).squeeze(0)  # 移除 batch 维度 [C, H, W]
-            for frame in frames
-        ]
-
-        # 堆叠并归一化
-        frames_tensor = torch.stack(resized_frames)  # [T, C, H, W]
-        frames_tensor = (frames_tensor - self.mean) / self.std
-        return frames_tensor
 
     def _construct_weak_aug(self):
         self.weak_aug = transforms.Compose(

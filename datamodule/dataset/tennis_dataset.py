@@ -164,7 +164,16 @@ class TennisDataset(torch.utils.data.Dataset):
                 frame = np.load(str(path))
             else:
 
-                frame = frames[-1]
+                # 生成默认光流张量（全零）
+                H, W = 224, 384  # 根据配置设置
+                frame = np.zeros((H, W, 2), dtype=np.float32)
+                print(f"⚠️ 光流文件缺失: {path}, 使用零张量替代")
+
+                # frame = frames[-1]
+
+            # 转换为张量并调整维度
+            frame = torch.from_numpy(frame).permute(2, 0, 1).float()  # [C, H, W]
+            print("-----转换为张量并调整维度-----", frame)
         elif mode == "pose":
             dir_to_pose_frame = str(dir_to_img_frame).replace(
                 "image_frame", "hand-pose/heatmap"
@@ -258,33 +267,37 @@ class TennisDataset(torch.utils.data.Dataset):
         #     transform = self.transform_flow  # 使用光流的预处理（2通道）
         #
         #
-        # source_frame_names = [
-        #     max(1, source_clip_start_frame[i] + self.cfg.source_sampling_rate * i)
-        #     for i in range(self.cfg.num_frames)
-        # ]
+        source_frame_names = [
+            max(1, source_clip_start_frame[i] + self.cfg.source_sampling_rate * i)
+            for i in range(self.cfg.num_frames)
+        ]
         #
         # # print(type(self.cfg.dataset.target_sampling_rate))  # 打印类型
         # # print('---num_frames', self.cfg.num_frames)
         # # print('---clip_start_frame', unlabel_clip_start_frame)
         #
         # # TODO 这个unlabel的start_frame为int，只有一个，而source的有16个这个不要紧吗？
-        # unlabel_frame_names = [
-        #     max(1, unlabel_clip_start_frame + self.cfg.dataset.target_sampling_rate * i)
-        #     for i in range(self.cfg.num_frames)
-        # ]
+        unlabel_frame_names = [
+            max(1, unlabel_clip_start_frame + self.cfg.dataset.target_sampling_rate * i)
+            for i in range(self.cfg.num_frames)
+        ]
         #
-        # for frame_name in source_frame_names:
-        #     source_frame = self._get_frame_source(
-        #         source_dir_to_img_frame, frame_name, self.mode, source_frames
-        #     )
-        #     source_frames.append(source_frame)
-        #
-        # # print('---unlabel_frames---', unlabel_frames)
-        # for frame_name in unlabel_frame_names:
-        #     unlabel_frame = self._get_frame_unlabel(
-        #         unlabel_dir_to_img_frame, frame_name, self.mode, unlabel_frames
-        #     )
-        #     unlabel_frames.append(unlabel_frame)
+        for frame_name in source_frame_names:
+            source_frame = self._get_frame_source(
+                source_dir_to_img_frame, frame_name, self.mode, source_frames
+            )
+            source_frames.append(source_frame)
+
+        # print('---unlabel_frames---', unlabel_frames)
+        for frame_name in unlabel_frame_names:
+            unlabel_frame = self._get_frame_unlabel(
+                unlabel_dir_to_img_frame, frame_name, self.mode, unlabel_frames
+            )
+            unlabel_frames.append(unlabel_frame)
+
+        # 断言列表非空
+        assert len(source_frames) > 0, "source_frames 为空，请检查数据加载逻辑"
+        assert len(unlabel_frames) > 0, "unlabel_frames 为空，请检查数据加载逻辑"
 
         # [T, H, W, C] -> [T*C, H, W] -> [C, T, H, W]
         # print('-----transform------', self.transform)
