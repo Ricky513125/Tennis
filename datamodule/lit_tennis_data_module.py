@@ -38,7 +38,8 @@ class TennisDataModule(pl.LightningDataModule):
             if self.mode == "RGB":
                 transform = DataAugmentationForUnlabelRGB(...)
             elif self.mode == "flow":
-                transform = DataAugmentationForUnlabelMM(...)
+                transform = DataAugmentationForUnlabelMM(cfg=self.cfg, mean=self.cfg.data_module.modality.mean,
+                std=self.cfg.data_module.modality.std)
 
             self.train_dataset = TennisDataset(
                 self.data_module_cfg,
