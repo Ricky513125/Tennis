@@ -200,7 +200,7 @@ class DataAugmentationForUnlabelMM(object):
         resized_frames = [
             torch.nn.functional.interpolate(
                 frame.unsqueeze(0),  # 添加 batch 维度 [1, C, H, W]
-                size=self.input_size,
+                size=[224, 384],
                 mode="bilinear",
                 align_corners=False,
             ).squeeze(0)  # 移除 batch 维度 [C, H, W]
