@@ -231,10 +231,14 @@ class TennisDataset(torch.utils.data.Dataset):
             if path.exists():
                 frame = np.load(str(path))
             else:
+                H, W = 224, 384
+                frame = np.zeros((H, W, 2), dtype=np.float32)
                 raise FileNotFoundError(f"光流文件缺失: {path}")  # 严格报错，避免静默失败
 
             print(f"_get_frame_unlabel 光流数据形状: {frame.shape}") # (2, 224, 398)
-
+            # 转换为张量并调整维度
+            flow_tensor = torch.from_numpy(frame).permute(2, 0, 1).float()  # [C=2, H, W]
+            print(f"tennis_dataset _get_frame_unlabel -> flow_tensor: {flow_tensor.shape}")
 
         elif mode == "pose":
             dir_to_keypoint_frame = str(dir_to_img_frame).replace(
@@ -286,6 +290,7 @@ class TennisDataset(torch.utils.data.Dataset):
             source_frame = self._get_frame_source(
                 source_dir_to_img_frame, frame_name, self.mode, source_frames
             )
+            print(f"源帧类型: {type(source_frame)}, 形状: {source_frame.shape}")  # 应为 torch.Tensor, [2, H, W]
             source_frames.append(source_frame)
 
         # print('---unlabel_frames---', unlabel_frames)
@@ -293,6 +298,7 @@ class TennisDataset(torch.utils.data.Dataset):
             unlabel_frame = self._get_frame_unlabel(
                 unlabel_dir_to_img_frame, frame_name, self.mode, unlabel_frames
             )
+            print(f"未标记帧类型: {type(unlabel_frame)}, 形状: {unlabel_frame.shape}")  # 应为 torch.Tensor, [2, H, W]
             unlabel_frames.append(unlabel_frame)
 
         # 断言列表非空

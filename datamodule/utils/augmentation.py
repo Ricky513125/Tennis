@@ -212,13 +212,13 @@ class DataAugmentationForUnlabelMM(object):
         frames_tensor = (frames_tensor - self.mean) / self.std
         return frames_tensor
 
-    def _construct_weak_aug(self):
-        self.weak_aug = transforms.Compose(
-            [
-                ToTensor(),
-                transforms.Normalize(mean=self.mean, std=self.std),
-            ]
-        )
+        # def _construct_weak_aug(self):
+        #     self.weak_aug = transforms.Compose(
+        #         [
+        #             ToTensor(),
+        #             transforms.Normalize(mean=self.mean, std=self.std),
+        #         ]
+        #     )
 
     def _construct_strong_aug(self):
         self.strong_aug = transforms.Compose(
