@@ -34,11 +34,6 @@ class TennisDataModule(pl.LightningDataModule):
             # 这里可能需要检查 transform_train 是否正确赋值
             # self.transform_train = self.get_train_transforms()
 
-            # 根据模态选择 transform
-            if self.mode == "RGB":
-                transform = DataAugmentationForUnlabelRGB(...)
-            elif self.mode == "flow":
-                transform = DataAugmentationForUnlabelMM(...)
 
             self.train_dataset = TennisDataset(
                 self.data_module_cfg,

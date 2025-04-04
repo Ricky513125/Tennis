@@ -204,3 +204,11 @@ class DataAugmentationForUnlabelMM(object):
                 # GaussianNoise(variance=self.variance),
             ]
         )
+
+class DataAugmentationForUnlabelRGB:
+    def __init__(self, cfg, input_size):
+        self.weak_aug = transforms.Compose([
+            transforms.Resize(input_size),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        ])

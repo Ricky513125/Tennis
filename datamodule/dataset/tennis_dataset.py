@@ -224,7 +224,7 @@ class TennisDataset(torch.utils.data.Dataset):
             else:
                 raise FileNotFoundError(f"光流文件缺失: {path}")  # 严格报错，避免静默失败
 
-            print(f"光流数据形状: {frame.shape}") # (2, 224, 398)
+            print(f"_get_frame_unlabel 光流数据形状: {frame.shape}") # (2, 224, 398)
 
 
         elif mode == "pose":
@@ -251,40 +251,40 @@ class TennisDataset(torch.utils.data.Dataset):
         source_frames = []
         unlabel_frames = []
 
-        # 假设 self.modality 是 "RGB" 或 "flow"
-        if self.mode == "RGB":
-            transform = self.transform_rgb  # 使用RGB的预处理（3通道）
-        elif self.mode == "flow":
-            transform = self.transform_flow  # 使用光流的预处理（2通道）
-
-
-        source_frame_names = [
-            max(1, source_clip_start_frame[i] + self.cfg.source_sampling_rate * i)
-            for i in range(self.cfg.num_frames)
-        ]
-
-        # print(type(self.cfg.dataset.target_sampling_rate))  # 打印类型
-        # print('---num_frames', self.cfg.num_frames)
-        # print('---clip_start_frame', unlabel_clip_start_frame)
-
-        # TODO 这个unlabel的start_frame为int，只有一个，而source的有16个这个不要紧吗？
-        unlabel_frame_names = [
-            max(1, unlabel_clip_start_frame + self.cfg.dataset.target_sampling_rate * i)
-            for i in range(self.cfg.num_frames)
-        ]
-
-        for frame_name in source_frame_names:
-            source_frame = self._get_frame_source(
-                source_dir_to_img_frame, frame_name, self.mode, source_frames
-            )
-            source_frames.append(source_frame)
-
-        # print('---unlabel_frames---', unlabel_frames)
-        for frame_name in unlabel_frame_names:
-            unlabel_frame = self._get_frame_unlabel(
-                unlabel_dir_to_img_frame, frame_name, self.mode, unlabel_frames
-            )
-            unlabel_frames.append(unlabel_frame)
+        # # 假设 self.modality 是 "RGB" 或 "flow"
+        # if self.mode == "RGB":
+        #     transform = self.transform_rgb  # 使用RGB的预处理（3通道）
+        # elif self.mode == "flow":
+        #     transform = self.transform_flow  # 使用光流的预处理（2通道）
+        #
+        #
+        # source_frame_names = [
+        #     max(1, source_clip_start_frame[i] + self.cfg.source_sampling_rate * i)
+        #     for i in range(self.cfg.num_frames)
+        # ]
+        #
+        # # print(type(self.cfg.dataset.target_sampling_rate))  # 打印类型
+        # # print('---num_frames', self.cfg.num_frames)
+        # # print('---clip_start_frame', unlabel_clip_start_frame)
+        #
+        # # TODO 这个unlabel的start_frame为int，只有一个，而source的有16个这个不要紧吗？
+        # unlabel_frame_names = [
+        #     max(1, unlabel_clip_start_frame + self.cfg.dataset.target_sampling_rate * i)
+        #     for i in range(self.cfg.num_frames)
+        # ]
+        #
+        # for frame_name in source_frame_names:
+        #     source_frame = self._get_frame_source(
+        #         source_dir_to_img_frame, frame_name, self.mode, source_frames
+        #     )
+        #     source_frames.append(source_frame)
+        #
+        # # print('---unlabel_frames---', unlabel_frames)
+        # for frame_name in unlabel_frame_names:
+        #     unlabel_frame = self._get_frame_unlabel(
+        #         unlabel_dir_to_img_frame, frame_name, self.mode, unlabel_frames
+        #     )
+        #     unlabel_frames.append(unlabel_frame)
 
         # [T, H, W, C] -> [T*C, H, W] -> [C, T, H, W]
         # print('-----transform------', self.transform)
