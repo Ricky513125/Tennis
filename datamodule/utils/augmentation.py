@@ -103,6 +103,11 @@ class DataAugmentationForUnlabelRGB(object):
         self._construct_weak_aug()
         self._construct_strong_aug()
 
+        # 元宝添加
+        self.input_size = [224, 384]
+        self.mean = torch.tensor(mean).view(-1, 1, 1)
+        self.std = torch.tensor(std).view(-1, 1, 1)
+
     def _construct_no_aug(self):
         self.no_aug = transforms.Compose(
             [
@@ -174,13 +179,17 @@ class DataAugmentationForVideoMAEMM(object):
 class DataAugmentationForUnlabelMM(object):
     def __init__(self, cfg, mean, std):
         self.cfg = cfg
-        self.mean = mean
-        self.std = std
-        self._construct_weak_aug()
-        self._construct_strong_aug()
+        # self.mean = mean
+        # self.std = std
+
+        # 元宝修改
         self.input_size = [224, 384]
         self.mean = torch.tensor(mean).view(-1, 1, 1)  # 形状 [2, 1, 1]
         self.std = torch.tensor(std).view(-1, 1, 1)  # 形状 [2, 1, 1]
+
+        self._construct_weak_aug()
+        self._construct_strong_aug()
+
 
         # print("DataAugmentationForUnlabelMM")
         #
@@ -216,17 +225,27 @@ class DataAugmentationForUnlabelMM(object):
         self.weak_aug = transforms.Compose(
             [
                 ToTensor(),
+                # 元宝添加
+                transforms.RandomResizedCrop(self.input_size),
+
                 transforms.Normalize(mean=self.mean, std=self.std),
             ]
         )
 
-
-def _construct_strong_aug(self):
+    def _construct_strong_aug(self):
         self.strong_aug = transforms.Compose(
             [
+                # ToTensor(),
+                # transforms.Normalize(mean=self.mean, std=self.std),
+                # # GaussianNoise(variance=self.variance),
+
                 ToTensor(),
+                transforms.RandomResizedCrop(self.input_size),
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.ColorJitter(0.4, 0.4, 0.4, 0.1),
                 transforms.Normalize(mean=self.mean, std=self.std),
-                # GaussianNoise(variance=self.variance),
             ]
         )
+
+
 
