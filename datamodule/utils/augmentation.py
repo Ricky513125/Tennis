@@ -213,12 +213,11 @@ class DataAugmentationForUnlabelMM(object):
         return frames_tensor
 
     def _construct_weak_aug(self):
-        """弱增强：仅调整尺寸并归一化"""
-        self.weak_aug = torch.nn.Sequential(
-            # 调整尺寸
-            torch.nn.AdaptiveAvgPool2d(self.input_size),
-            # 归一化
-            torch.nn.Identity()  # 占位符，实际归一化在后续步骤
+        self.weak_aug = transforms.Compose(
+            [
+                ToTensor(),
+                transforms.Normalize(mean=self.mean, std=self.std),
+            ]
         )
 
 
