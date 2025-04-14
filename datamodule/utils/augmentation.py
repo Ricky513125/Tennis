@@ -224,7 +224,7 @@ class DataAugmentationForUnlabelMM(object):
     def _construct_weak_aug(self):
         self.weak_aug = transforms.Compose(
             [
-                ToTensor(),
+                # ToTensor(),
                 # 元宝添加
                 transforms.RandomResizedCrop(self.input_size),
 
@@ -239,7 +239,7 @@ class DataAugmentationForUnlabelMM(object):
                 # transforms.Normalize(mean=self.mean, std=self.std),
                 # # GaussianNoise(variance=self.variance),
 
-                ToTensor(),
+                # ToTensor(),
                 transforms.RandomResizedCrop(self.input_size),
                 transforms.RandomHorizontalFlip(p=0.5),
                 transforms.ColorJitter(0.4, 0.4, 0.4, 0.1),
