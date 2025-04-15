@@ -167,13 +167,13 @@ class TennisDataset(torch.utils.data.Dataset):
                 # 生成默认光流张量（全零）
                 H, W = 224, 384  # 根据配置设置
                 frame = np.zeros((H, W, 2), dtype=np.float32)
-                print(f"⚠️ 光流文件缺失: {path}, 使用零张量替代")
+                print(f"光流文件缺失: {path}, 使用零张量替代")
 
                 # frame = frames[-1]
 
             # 转换为张量并调整维度
             frame = torch.from_numpy(frame).permute(2, 0, 1).float()  # [C, H, W]
-            print("-----转换为张量并调整维度-----", frame)
+            print("-----转换为张量并调整维度-----", frame.size())
         elif mode == "pose":
             dir_to_pose_frame = str(dir_to_img_frame).replace(
                 "image_frame", "hand-pose/heatmap"
