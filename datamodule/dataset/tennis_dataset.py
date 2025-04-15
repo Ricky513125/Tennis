@@ -310,12 +310,18 @@ class TennisDataset(torch.utils.data.Dataset):
         # print('-----------')
         # print(dir(self.transform))  # 打印所有可用的属性和方法
         # print('-----------')
+
+        # 4.15 16:17 将列表转换为张量 [T, C, H, W]
+        source_frames = torch.stack(source_frames, dim=0)  # 形状 [T, C, H, W]
+        unlabel_frames = torch.stack(unlabel_frames, dim=0)
+
         source_frames = self.transform.weak_aug(source_frames)
         unlabel_frames = self.transform.weak_aug(unlabel_frames)
 
         print(f"预处理后 source_frames 形状: {source_frames.shape}")  # 应为 [T, C=2, 224, 384]
-        source_frames = source_frames.permute(0, 3, 1, 2)  # 假设输入是 [T, H, W, C]
-        unlabel_frames = unlabel_frames.permute(0, 3, 1, 2)
+
+        # source_frames = source_frames.permute(0, 3, 1, 2)  # 假设输入是 [T, H, W, C]
+        # unlabel_frames = unlabel_frames.permute(0, 3, 1, 2)
 
         # mask generation
         mask = self.mask_gen()

@@ -184,8 +184,13 @@ class DataAugmentationForUnlabelMM(object):
 
         # 元宝修改
         self.input_size = [224, 384]
-        self.mean = torch.tensor(mean).view(-1, 1, 1)  # 形状 [2, 1, 1]
-        self.std = torch.tensor(std).view(-1, 1, 1)  # 形状 [2, 1, 1]
+        # self.mean = torch.tensor(mean).view(-1, 1, 1)  # 形状 [2, 1, 1]
+        # self.std = torch.tensor(std).view(-1, 1, 1)  # 形状 [2, 1, 1]
+
+        # 4.15 1619
+        self.mean = torch.tensor(mean).view(1, -1, 1, 1)  # [1, C, 1, 1]
+        self.std = torch.tensor(std).view(1, -1, 1, 1)  # [1, C, 1, 1]
+
 
         self._construct_weak_aug()
         self._construct_strong_aug()
@@ -226,9 +231,18 @@ class DataAugmentationForUnlabelMM(object):
             [
                 # ToTensor(),
                 # 元宝添加
-                transforms.RandomResizedCrop(self.input_size),
+                # transforms.RandomResizedCrop(self.input_size),
+                #
+                # transforms.Normalize(mean=self.mean, std=self.std),
 
-                transforms.Normalize(mean=self.mean, std=self.std),
+                # 0415 1620
+                # 调整每帧的尺寸
+                transforms.Lambda(lambda x: torch.stack([
+                    transforms.functional.resize(frame.unsqueeze(0), self.input_size)  # [1, C, H, W]
+                    for frame in x
+                ]).squeeze(1)),  # 结果形状 [T, C, H, W]
+                # 归一化
+                transforms.Lambda(lambda x: (x - self.mean) / self.std),
             ]
         )
 
