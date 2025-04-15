@@ -120,7 +120,7 @@ C: 通道数。
         # ========== 动态生成掩码 ==========
         # print("动态生成掩码", source_frames.shape) # 4, 16, 224, 3, 384
         # source_frames = rearrange()
-        B, C, T, H, W = source_frames.shape
+        B, H, T, W, C = source_frames.shape
         print("----source_frames.shape-----", source_frames.shape)
         # 计算序列长度
         print("---H---", H)
