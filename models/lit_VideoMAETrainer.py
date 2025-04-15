@@ -121,14 +121,14 @@ C: 通道数。
         # print("动态生成掩码", source_frames.shape) # 4, 16, 224, 3, 384
         # source_frames = rearrange()
         B, H, T, W, C = source_frames.shape
-        print("----source_frames.shape-----", source_frames.shape)
-        # 计算序列长度
-        print("---H---", H)
-        print("---W---", W)
-        print("---T---", T)
+        # print("----source_frames.shape-----", source_frames.shape)
+        # # 计算序列长度
+        # print("---H---", H)
+        # print("---W---", W)
+        # print("---T---", T)
 
         seq_length = (H // self.patch_size) * (W // self.patch_size) * (T // 2)
-        print("seq_length", seq_length)
+        # print("seq_length", seq_length)
         # print("self.patch_size", self.patch_size)
         # print("H", H, " + W:", W)
         # print("seq_length: ", seq_length)
@@ -155,8 +155,8 @@ C: 通道数。
             bool_masked_pos[i, rand_indices[i, :num_masked_per_batch]] = True
 
         # 验证掩码形状
-        print(f"bool_masked_pos 形状: {bool_masked_pos.shape}")  # 应为 [B, num_patches]
-        print(f"num_masked_per_batch: {num_masked_per_batch}")  # 应大于 0
+        # print(f"bool_masked_pos 形状: {bool_masked_pos.shape}")  # 应为 [B, num_patches]
+        # print(f"num_masked_per_batch: {num_masked_per_batch}")  # 应大于 0
 
         # 验证形状
 
@@ -211,18 +211,18 @@ C: 通道数。
             #
             # print('lit_VideoMAETrainer.training_step', source_frames.shape)
             # 反归一化视频，将其恢复到原始数据范围[0, 1]
-            print("调整位置前", source_frames.shape)
-            print("调整位置前", unlabel_frames.shape)
+            # print("调整位置前", source_frames.shape)
+            # print("调整位置前", unlabel_frames.shape)
             source_frames = source_frames.permute(0, 4, 2, 1, 3)  # [B, C, T, H, W]
             unlabel_frames = unlabel_frames.permute(0, 4, 2, 1, 3)
 
             # print(f"VideoMAETrainer 调整后 source_frames 形状: {source_frames.shape}")  # 应为 [4, 3, 16, 224, 384]
 
-            print("---lit_VideoMAETrainer: Normalizing videos")
-            print('---source_frames---', source_frames.shape)
-            print('---unlabel_frames---', unlabel_frames.shape)
-            print('---std---', std, '---std.shape---', std.shape)
-            print('---mean---', mean, '---mean.shape---', mean.shape)
+            # print("---lit_VideoMAETrainer: Normalizing videos")
+            # print('---source_frames---', source_frames.shape)
+            # print('---unlabel_frames---', unlabel_frames.shape)
+            # print('---std---', std, '---std.shape---', std.shape)
+            # print('---mean---', mean, '---mean.shape---', mean.shape)
 
             unnorm_videos_source = source_frames * std + mean  # in [0, 1]
             unnorm_videos_target = unlabel_frames * std + mean  # in [0, 1]
