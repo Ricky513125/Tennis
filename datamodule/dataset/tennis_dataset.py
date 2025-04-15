@@ -188,10 +188,6 @@ class TennisDataset(torch.utils.data.Dataset):
 
     def _get_frame_unlabel(self, dir_to_img_frame, frame_name, mode, frames):
         if mode == "RGB":
-            # path = dir_to_img_frame / Path(
-            #     self.unlabel_loader.get_frame_str(frame_name)
-            # )
-            # add
             path = dir_to_img_frame / Path(str(frame_name).zfill(6) + ".jpg")
             # print('_unlabel_frame_path', path)
             if path.exists():
@@ -199,20 +195,9 @@ class TennisDataset(torch.utils.data.Dataset):
             else:
                 frame = frames[-1]
         elif mode == "flow":
-            # dir_to_flow_frame = str(dir_to_img_frame).replace("RGB", "flow")
-            # path = Path(
-            #     dir_to_flow_frame,
-            #     self.unlabel_loader.get_frame_str(frame_name).replace("jpg", "npy"),
-            # )
-            # if path.exists():
-            #     frame = np.load(str(path))
-            # else:
-            #     frame = frames[-1]
-
             # 关键修改：直接基于video_id构造光流路径
             # 假设dir_to_img_frame结构为：/path/to/RGB_frames/{video_id}
             video_id = dir_to_img_frame.name  # 从RGB路径提取video_id（例如 "20230129-M-Australian_Open-F-Novak_Djokovic-Stefanos_Tsitsipas_96814_97030"）
-
             # 构建光流文件路径
             flow_base_dir = Path("/mnt/ssd2/lingyu/Tennis/data/TENNIS/tennis_flows")
             flow_video_dir = flow_base_dir / video_id
@@ -232,10 +217,18 @@ class TennisDataset(torch.utils.data.Dataset):
                 frame = np.load(str(path))
             else:
                 H, W = 224, 384
+                # 个人调整，和上面形式吻合
                 frame = np.zeros((H, W, 2), dtype=np.float32)
+                # frame = np.zeros((H, W, 2), dtype=np.float32)
                 raise FileNotFoundError(f"光流文件缺失: {path}")  # 严格报错，避免静默失败
 
             print(f"_get_frame_unlabel 光流数据形状: {frame.shape}") # (2, 224, 398)
+            # 居中裁剪宽度至 384
+            _, original_width, _ = frame.shape
+            target_width = 384
+            start_x = (original_width - target_width) // 2  # 计算起始列
+            cropped_flow = frame[:, start_x: start_x + target_width, :]  # 形状 (224, 384, 2)
+
             # 转换为张量并调整维度
             flow_tensor = torch.from_numpy(frame).permute(2, 0, 1).float()  # [C=2, H, W]
             print(f"tennis_dataset _get_frame_unlabel -> flow_tensor: {flow_tensor.shape}")
@@ -253,6 +246,7 @@ class TennisDataset(torch.utils.data.Dataset):
             else:
                 frame = frames[-1]
         return frame
+
     def _get_input(
         self,
         source_dir_to_img_frame,
@@ -299,6 +293,11 @@ class TennisDataset(torch.utils.data.Dataset):
                 unlabel_dir_to_img_frame, frame_name, self.mode, unlabel_frames
             )
             print(f"未标记帧类型: {type(unlabel_frame)}, 形状: {unlabel_frame.shape}")  # 应为 torch.Tensor, [2, H, W]
+
+            # 强制转换为 Tensor（如果意外得到 numpy）
+            if isinstance(unlabel_frame, np.ndarray):
+                unlabel_frame = torch.from_numpy(unlabel_frame).float()
+
             unlabel_frames.append(unlabel_frame)
 
         # 断言列表非空
