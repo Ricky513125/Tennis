@@ -167,13 +167,13 @@ class TennisDataset(torch.utils.data.Dataset):
                 # 生成默认光流张量（全零）
                 H, W = 224, 384  # 根据配置设置
                 frame = np.zeros((H, W, 2), dtype=np.float32)
-                print(f"光流文件缺失: {path}, 使用零张量替代")
+                # print(f"光流文件缺失: {path}, 使用零张量替代")
 
                 # frame = frames[-1]
 
             # 转换为张量并调整维度
             frame = torch.from_numpy(frame).permute(2, 0, 1).float()  # [C, H, W]
-            print("-----转换为张量并调整维度-----", frame.size())
+            # print("-----转换为张量并调整维度-----", frame.size())
         elif mode == "pose":
             dir_to_pose_frame = str(dir_to_img_frame).replace(
                 "image_frame", "hand-pose/heatmap"
@@ -222,7 +222,7 @@ class TennisDataset(torch.utils.data.Dataset):
                 # frame = np.zeros((H, W, 2), dtype=np.float32)
                 raise FileNotFoundError(f"光流文件缺失: {path}")  # 严格报错，避免静默失败
 
-            print(f"_get_frame_unlabel 光流数据形状: {frame.shape}") # (2, 224, 398)
+            # print(f"_get_frame_unlabel 光流数据形状: {frame.shape}") # (2, 224, 398)
             # 居中裁剪宽度至 384
             _, original_width, _ = frame.shape
             target_width = 384
@@ -231,7 +231,7 @@ class TennisDataset(torch.utils.data.Dataset):
 
             # 转换为张量并调整维度
             flow_tensor = torch.from_numpy(frame).permute(2, 0, 1).float()  # [C=2, H, W]
-            print(f"tennis_dataset _get_frame_unlabel -> flow_tensor: {flow_tensor.shape}")
+            # print(f"tennis_dataset _get_frame_unlabel -> flow_tensor: {flow_tensor.shape}")
 
         elif mode == "pose":
             dir_to_keypoint_frame = str(dir_to_img_frame).replace(
@@ -284,7 +284,7 @@ class TennisDataset(torch.utils.data.Dataset):
             source_frame = self._get_frame_source(
                 source_dir_to_img_frame, frame_name, self.mode, source_frames
             )
-            print(f"源帧类型: {type(source_frame)}, 形状: {source_frame.shape}")  # 应为 torch.Tensor, [2, H, W]
+            # print(f"源帧类型: {type(source_frame)}, 形状: {source_frame.shape}")  # 应为 torch.Tensor, [2, H, W]
             source_frames.append(source_frame)
 
         # print('---unlabel_frames---', unlabel_frames)
@@ -292,7 +292,7 @@ class TennisDataset(torch.utils.data.Dataset):
             unlabel_frame = self._get_frame_unlabel(
                 unlabel_dir_to_img_frame, frame_name, self.mode, unlabel_frames
             )
-            print(f"未标记帧类型: {type(unlabel_frame)}, 形状: {unlabel_frame.shape}")  # 应为 torch.Tensor, [2, H, W]
+            # print(f"未标记帧类型: {type(unlabel_frame)}, 形状: {unlabel_frame.shape}")  # 应为 torch.Tensor, [2, H, W]
 
             # 强制转换为 Tensor（如果意外得到 numpy）
             if isinstance(unlabel_frame, np.ndarray):
@@ -314,14 +314,14 @@ class TennisDataset(torch.utils.data.Dataset):
         source_frames = torch.stack(source_frames, dim=0)  # 形状 [T, C, H, W]
         unlabel_frames = torch.stack(unlabel_frames, dim=0)
 
-        print("tennis_dataset weak_aug前的frames大小------")
-        print("source_frames:", source_frames.shape)
-        print("unlabel_frames:", unlabel_frames.shape)
+        # print("tennis_dataset weak_aug前的frames大小------")
+        # print("source_frames:", source_frames.shape)
+        # print("unlabel_frames:", unlabel_frames.shape)
         source_frames = source_frames.permute(0, 2, 3, 1)
         source_frames = self.transform.weak_aug(source_frames)
         unlabel_frames = self.transform.weak_aug(unlabel_frames)
 
-        print(f"预处理后 source_frames 形状: {source_frames.shape}")  # 应为 [T, C=2, 224, 384]
+        # print(f"预处理后 source_frames 形状: {source_frames.shape}")  # 应为 [T, C=2, 224, 384]
 
         # source_frames = source_frames.permute(0, 3, 1, 2)  # 假设输入是 [T, H, W, C]
         # unlabel_frames = unlabel_frames.permute(0, 3, 1, 2)
