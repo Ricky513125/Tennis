@@ -317,7 +317,7 @@ class TennisDataset(torch.utils.data.Dataset):
         print("tennis_dataset weak_aug前的frames大小------")
         print("source_frames:", source_frames.shape)
         print("unlabel_frames:", unlabel_frames.shape)
-
+        source_frames = source_frames.permute(0, 2, 3, 1)
         source_frames = self.transform.weak_aug(source_frames)
         unlabel_frames = self.transform.weak_aug(unlabel_frames)
 
