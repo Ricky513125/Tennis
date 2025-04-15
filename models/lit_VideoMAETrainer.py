@@ -123,7 +123,12 @@ C: 通道数。
         B, C, T, H, W = source_frames.shape
         print("----source_frames.shape-----", source_frames.shape)
         # 计算序列长度
+        print("---H---", H)
+        print("---W---", W)
+        print("---T---", T)
+
         seq_length = (H // self.patch_size) * (W // self.patch_size) * (T // 2)
+        print("seq_length", seq_length)
         # print("self.patch_size", self.patch_size)
         # print("H", H, " + W:", W)
         # print("seq_length: ", seq_length)
