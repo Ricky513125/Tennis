@@ -185,10 +185,11 @@ C: 通道数。
                     None, :, None, None, None
                 ].type_as(source_frames)
 
-            # print('---source_frames---', source_frames.shape)
-            # print('---unlabel_frames---', unlabel_frames.shape)
-            # print('---std---', std, '---std.shape---', std.shape)
-            # print('---mean---', mean, '---mean.shape---', mean.shape)
+            print("---lit_VideoMAETrainer: Normalizing videos")
+            print('---source_frames---', source_frames.shape)
+            print('---unlabel_frames---', unlabel_frames.shape)
+            print('---std---', std, '---std.shape---', std.shape)
+            print('---mean---', mean, '---mean.shape---', mean.shape)
             #
             # print('lit_VideoMAETrainer.training_step', source_frames.shape)
             # 反归一化视频，将其恢复到原始数据范围[0, 1]
