@@ -242,6 +242,7 @@ class DataAugmentationForUnlabelMM(object):
                     for frame in x
                 ]).squeeze(1)),  # 结果形状 [T, C, H, W]
                 # 归一化
+                # print("x.shape=", x.shape)
                 transforms.Lambda(lambda x: (x - self.mean) / self.std),
             ]
         )

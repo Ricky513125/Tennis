@@ -314,6 +314,10 @@ class TennisDataset(torch.utils.data.Dataset):
         source_frames = torch.stack(source_frames, dim=0)  # 形状 [T, C, H, W]
         unlabel_frames = torch.stack(unlabel_frames, dim=0)
 
+        print("tennis_dataset weak_aug前的frames大小------")
+        print("source_frames:", source_frames.shape)
+        print("unlabel_frames:", unlabel_frames.shape)
+
         source_frames = self.transform.weak_aug(source_frames)
         unlabel_frames = self.transform.weak_aug(unlabel_frames)
 
