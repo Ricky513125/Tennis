@@ -193,7 +193,8 @@ C: 通道数。
             #
             # print('lit_VideoMAETrainer.training_step', source_frames.shape)
             # 反归一化视频，将其恢复到原始数据范围[0, 1]
-
+            print("调整位置前", source_frames.shape)
+            print("调整位置前", unlabel_frames.shape)
             source_frames = source_frames.permute(0, 3, 2, 4, 1)  # [B, C, T, H, W]
             unlabel_frames = unlabel_frames.permute(0, 3, 2, 4, 1)
 
