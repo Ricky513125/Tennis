@@ -135,11 +135,23 @@ C: 通道数。
         # bool_masked_pos = bool_masked_pos.to(source_frames.device)
 
         num_masked_per_batch = int(seq_length * mask_ratio)  # 每个批次固定掩码数
+        # bool_masked_pos = torch.zeros(B, seq_length, dtype=torch.bool)
+        # for i in range(B):
+        #     indices = torch.randperm(seq_length)[:num_masked_per_batch]
+        #     bool_masked_pos[i, indices] = True
+        # bool_masked_pos = bool_masked_pos.to(source_frames.device)
+
+        # num_masked_per_batch = int(num_patches * mask_ratio)
+
+        # 生成随机掩码（示例代码，需根据实际实现调整）
+        rand_indices = torch.rand(B, seq_length).argsort(dim=-1)
         bool_masked_pos = torch.zeros(B, seq_length, dtype=torch.bool)
         for i in range(B):
-            indices = torch.randperm(seq_length)[:num_masked_per_batch]
-            bool_masked_pos[i, indices] = True
-        bool_masked_pos = bool_masked_pos.to(source_frames.device)
+            bool_masked_pos[i, rand_indices[i, :num_masked_per_batch]] = True
+
+        # 验证掩码形状
+        print(f"bool_masked_pos 形状: {bool_masked_pos.shape}")  # 应为 [B, num_patches]
+        print(f"num_masked_per_batch: {num_masked_per_batch}")  # 应大于 0
 
         # 验证形状
 
