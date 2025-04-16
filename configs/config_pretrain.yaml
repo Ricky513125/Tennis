@@ -12,6 +12,8 @@ dirpath: checkpoints/
 train: False #True
 test: False
 accelerator: gpu
+# add
+precision: 16-mixed
 devices: [0]
 #devices: [0, 1]
 strategy: deepspeed
@@ -19,8 +21,8 @@ load_checkpoint: True #
 ckpt_path: /mnt/ssd2/lingyu/Tennis/ckpt/VideoMAE_ViT_B_1600.pth
 
 save_ckpt_freq: 5
-batch_size: 4 # 4
-num_workers: 4 # 4
+batch_size: 1 # 4
+num_workers: 2 # 4
 
 target_json_path: /mnt/ssd2/lingyu/Tennis/train.json
 

@@ -55,6 +55,8 @@ class TennisDataModule(pl.LightningDataModule):
             shuffle=True,
             num_workers=self.cfg.num_workers,
             pin_memory=True,
+
+            precision="16-mixed"
         )
 
     # def val_dataloader(self):
