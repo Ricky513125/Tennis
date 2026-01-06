@@ -23,7 +23,7 @@ ckpt_path: /mnt/ssd2/lingyu/Tennis/ckpt/VideoMAE_ViT_B_1600.pth
 save_ckpt_freq: 5
 batch_size: 1 # 4
 num_workers: 2 # 4
-
+#accumulation_steps: 4
 target_json_path: /mnt/ssd2/lingyu/Tennis/train.json
 
 # add

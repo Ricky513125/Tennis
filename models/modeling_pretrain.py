@@ -34,7 +34,7 @@ class PretrainVisionTransformerEncoder(nn.Module):
         # img_size=224,
         # patch_size=16,
         img_size=(384, 224),  # 设为 tuple 以支持非正方形输入 384
-        patch_size = 14, # 使其能够被整除
+        patch_size = 16, # 使其能够被整除
         in_chans=2,
         num_classes=0,
         embed_dim=768,
