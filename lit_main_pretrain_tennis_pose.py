@@ -27,7 +27,7 @@ warnings.filterwarnings("ignore")
 logger = logging.getLogger(__name__)
 
 
-@hydra.main(config_path="configs", config_name="config_pretrain.yaml")
+@hydra.main(config_path="configs", config_name="config_pretrain_pose.yaml")
 def main(cfg):
     # gpt
     # print("注意这里！", OmegaConf.to_yaml(cfg))  # 打印配置，确保 `target_json_path` 在里面

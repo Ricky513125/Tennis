@@ -34,8 +34,7 @@ class UnlabelCombinedPretrainDataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         if stage == "fit" or stage is None:
-            # 这里可能需要检查 transform_train 是否正确赋值
-            self.transform_train = self.get_train_transforms()
+            # transform_train 已在 __init__ 中正确初始化
             self.train_dataset = Ego4DUnlabelCombinedDataset(
                 self.data_module_cfg,
                 self.transform_train,
@@ -46,8 +45,8 @@ class UnlabelCombinedPretrainDataModule(pl.LightningDataModule):
 
     def train_dataloader(self):
         return DataLoader(
-            # self.train_dataset,
-            batch_size=self.cfg.batch_size,
+            self.train_dataset,
+            batch_size=self.cfg.trainer.batch_size,
             shuffle=True,
             num_workers=self.cfg.num_workers,
             drop_last=True,

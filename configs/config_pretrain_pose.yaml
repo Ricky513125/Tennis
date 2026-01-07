@@ -1,10 +1,10 @@
 hydra:
   run:
-    dir: ./output/${now:%Y-%m-%d}/${now:%H-%M-%S}/pretrain_flow
+    dir: ./output/${now:%Y-%m-%d}/${now:%H-%M-%S}/pretrain_pose
 defaults:
   - _self_
-  - trainer: pretrain_trainer
-  - data_module: pretrain_data_module
+  - trainer: pretrain_trainer_pose
+  - data_module: pretrain_data_module_pose
 
 seed: 42
 monitored_metric: loss
