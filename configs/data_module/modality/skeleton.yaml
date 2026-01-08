@@ -1,7 +1,7 @@
 # Skeleton modality configuration
 mode: skeleton
 patch_size: [16, 16]  # Patch size for VideoMAE
-input_size: 56  # Heatmap size
+input_size: 224  # Input size (will be resized from 56x56 heatmap to 224x224)
 
 # Mean and std for skeleton heatmaps (normalized)
 # Assuming heatmap format [K, H, W] where K=17 keypoints
