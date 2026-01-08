@@ -1,0 +1,139 @@
+"""
+只使用 Tennis unlabel 数据的数据集
+用于在无标签目标域上进行微调，不使用源域数据
+"""
+import json
+import logging
+from pathlib import Path
+
+import numpy as np
+import torch
+from PIL import Image
+
+from netscripts.get_unlabel_loader import get_unlabel_loader
+
+logger = logging.getLogger(__name__)
+
+
+class TennisUnlabelOnlyDataset(torch.utils.data.Dataset):
+    def __init__(self, cfg, transform, mask_gen, mode="RGB"):
+        super(TennisUnlabelOnlyDataset, self).__init__()
+        self.cfg = cfg
+        self.transform = transform
+        self.mask_gen = mask_gen
+        self.mode = mode
+        self.num_frames = cfg.num_frames
+        self._construct_unlabel_loader(cfg)
+        self.patch_size = 16
+        self.tubelet_size = 2
+
+    def _construct_unlabel_loader(self, cfg):
+        """只加载 unlabel 数据"""
+        self.unlabel_loader = get_unlabel_loader(cfg.dataset)
+
+    def _generate_mask(self, H, W, T):
+        num_spatial_patches = (H // self.patch_size) * (W // self.patch_size)
+        num_temporal_blocks = T // self.tubelet_size
+        seq_length = num_spatial_patches * num_temporal_blocks
+        mask = torch.rand(seq_length) < 0.75  # mask_ratio=0.75
+        return mask
+
+    def _get_frame_unlabel(self, dir_to_img_frame, frame_name, mode, frames):
+        """加载 unlabel 帧数据"""
+        if mode == "RGB":
+            path = dir_to_img_frame / Path(str(frame_name).zfill(6) + ".jpg")
+            if path.exists():
+                frame = Image.open(str(path))
+            else:
+                frame = frames[-1] if frames else Image.new('RGB', (224, 224), color='black')
+        elif mode == "flow":
+            # 基于 video_id 构造光流路径
+            video_id = dir_to_img_frame.name
+            dir_to_flow_frame = Path("/mnt/ssd2/lingyu/Tennis/data/TENNIS/tennis_flows") / video_id
+            path = dir_to_flow_frame / f"pair_{str(frame_name).zfill(5)}.npy"
+            
+            if path.exists():
+                frame = np.load(str(path))
+            else:
+                H, W = 224, 384
+                frame = np.zeros((H, W, 2), dtype=np.float32)
+
+            # 居中裁剪宽度至 384（如果需要）
+            H, original_width, C = frame.shape
+            target_width = 384
+            if original_width != target_width:
+                start_x = (original_width - target_width) // 2
+                frame = frame[:, start_x: start_x + target_width, :]
+
+            # 转换为张量并调整维度 [H, W, C] -> [C, H, W]
+            frame = torch.from_numpy(frame).permute(2, 0, 1).float()
+        elif mode == "pose":
+            dir_to_pose_frame = str(dir_to_img_frame).replace(
+                "vid_frames_224", "hand-pose/heatmap"
+            )
+            path = Path(dir_to_pose_frame, f"{str(frame_name).zfill(6)}.npy")
+            if path.exists():
+                frame = np.load(str(path))
+            else:
+                frame = frames[-1] if frames else np.zeros((17, 56, 56), dtype=np.float32)
+        return frame
+
+    def _get_input(self, unlabel_dir_to_img_frame, unlabel_clip_start_frame):
+        """只加载 unlabel 数据"""
+        unlabel_frames = []
+
+        # 生成帧名列表
+        unlabel_frame_names = [
+            max(1, unlabel_clip_start_frame + self.cfg.dataset.target_sampling_rate * i)
+            for i in range(self.num_frames)
+        ]
+
+        # 加载 unlabel 帧
+        for frame_name in unlabel_frame_names:
+            unlabel_frame = self._get_frame_unlabel(
+                unlabel_dir_to_img_frame, frame_name, self.mode, unlabel_frames
+            )
+            
+            # 强制转换为 Tensor（如果意外得到 numpy）
+            if isinstance(unlabel_frame, np.ndarray):
+                unlabel_frame = torch.from_numpy(unlabel_frame).float()
+
+            unlabel_frames.append(unlabel_frame)
+
+        # 断言列表非空
+        assert len(unlabel_frames) > 0, "unlabel_frames 为空，请检查数据加载逻辑"
+
+        # 转换为张量 [T, C, H, W]
+        unlabel_frames = torch.stack(unlabel_frames, dim=0)
+
+        # 应用变换
+        unlabel_frames = unlabel_frames.permute(0, 2, 3, 1)  # [T, H, W, C]
+        unlabel_frames = self.transform.weak_aug(unlabel_frames)
+
+        # 生成 mask（基于 unlabel_frames 的形状）
+        T, H, W, C = unlabel_frames.shape
+        mask = self._generate_mask(H, W, T)
+
+        return unlabel_frames, mask
+
+    def __getitem__(self, index):
+        input = {}
+
+        # 只使用 unlabel 数据
+        unlabel_index = index % len(self.unlabel_loader)
+        unlabel_dir_to_img_frame = self.unlabel_loader._dir_to_img_frame[unlabel_index]
+        unlabel_clip_start_frame = self.unlabel_loader._start_frame[unlabel_index]
+
+        unlabel_frames, mask = self._get_input(
+            unlabel_dir_to_img_frame,
+            unlabel_clip_start_frame,
+        )
+
+        # 组装数据（只包含 unlabel_frames，不包含 source_frames）
+        input["unlabel_frames"] = unlabel_frames
+        input["mask"] = mask
+
+        return input
+
+    def __len__(self):
+        return len(self.unlabel_loader)

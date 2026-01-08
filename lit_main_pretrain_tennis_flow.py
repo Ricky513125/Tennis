@@ -16,7 +16,12 @@ from datamodule.lit_tennis_data_module import (
     TennisDataModule
 )
 
+from datamodule.lit_tennis_unlabel_only_data_module import (
+    TennisUnlabelOnlyDataModule
+)
+
 from models.lit_VideoMAETrainer import VideoMAETrainer
+from models.lit_VideoMAETrainer_unlabel_only import VideoMAETrainer as VideoMAETrainerUnlabelOnly
 
 from omegaconf import OmegaConf
 
@@ -40,13 +45,13 @@ def main(cfg):
     random.seed(cfg.seed)
 
     # data module
-    # 预训练阶段：使用 Ego4D 作为 source，Tennis 作为 unlabel
-    data_module = UnlabelCombinedPretrainDataModule(cfg)
-    # 注意：TennisDataModule 应该用于多模态蒸馏阶段（lit_main_mmdistill.py）
-    # data_module = TennisDataModule(cfg)
-
-    # model
-    model = VideoMAETrainer(cfg)
+    # 选项1：使用 Ego4D 作为 source，Tennis 作为 unlabel（原始 MM-CDFSL 方法）
+    # data_module = UnlabelCombinedPretrainDataModule(cfg)
+    # model = VideoMAETrainer(cfg)
+    
+    # 选项2：只使用 Tennis unlabel 数据，不使用源域数据（无标签微调）
+    data_module = TennisUnlabelOnlyDataModule(cfg)
+    model = VideoMAETrainerUnlabelOnly(cfg)
 
 
     if torch.cuda.is_available() and len(cfg.devices):
