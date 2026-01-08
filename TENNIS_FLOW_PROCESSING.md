@@ -38,9 +38,18 @@ frames = [flow_tensor_1, flow_tensor_2, ..., flow_tensor_16]
 video_frames = torch.stack(frames, dim=0)  # [T=16, C=2, H=224, W=384]
 
 # 应用数据增强（归一化等）
-video_frames = video_frames.permute(0, 2, 3, 1)  # [T, H, W, C]
-video_frames = transform.weak_aug(video_frames)  # 归一化
-# 输出形状: [T=16, H=224, W=384, C=2]
+# 第一步：转换为 [T, H, W, C] 格式，因为 weak_aug 期望这个格式作为输入
+video_frames = video_frames.permute(0, 2, 3, 1)  # [T, H, W, C] = [16, 224, 384, 2]
+
+# 第二步：weak_aug 内部处理
+# - 转换为 [T, C, H, W] 进行 resize 和归一化
+# - 输出: [T, C, H, W] = [16, 2, 224, 384]
+video_frames = transform.weak_aug(video_frames)
+
+# 注意：weak_aug 输出是 [T, C, H, W]，但后续代码期望 [T, H, W, C]
+# 如果 weak_aug 没有自动转换，需要在返回前转换：
+# video_frames = video_frames.permute(0, 2, 3, 1)  # [T, H, W, C]
+# 最终输出形状: [T=16, H=224, W=384, C=2]
 ```
 
 ## 2. 数据预处理阶段
@@ -76,12 +85,41 @@ std: [计算得到的标准差1, 计算得到的标准差2]
 ```
 
 ### 2.2 数据增强 (`DataAugmentationForUnlabelMM`)
+
+数据增强在 `weak_aug` 方法中进行，处理流程如下：
+
 ```python
-transform = transforms.Compose([
-    ToTensor(),  # 转换为 Tensor
-    transforms.Normalize(mean=self.mean, std=self.std)  # 从配置读取
-])
+# 输入: [T, H, W, C] = [16, 224, 384, 2]
+# 从 tennis_unlabel_only_dataset.py 传入
+
+# 第一步: 转换为 [T, C, H, W]
+x = x.permute(0, 3, 1, 2)  # [16, 2, 224, 384]
+
+# 第二步: 调整每帧的尺寸（如果需要）
+# 如果已经是目标尺寸 [224, 384]，跳过 resize
+# 否则使用 bilinear interpolation 调整到目标尺寸
+x = torch.stack([
+    transforms.functional.resize(frame.unsqueeze(0), [224, 384])
+    for frame in x
+]).squeeze(1)  # [16, 2, 224, 384]
+
+# 第三步: 归一化
+# mean/std 形状: [1, C, 1, 1] = [1, 2, 1, 1]
+# x 形状: [T, C, H, W] = [16, 2, 224, 384]
+x = (x - self.mean) / self.std  # 广播归一化
+
+# 输出: [T, C, H, W] = [16, 2, 224, 384]
 ```
+
+**关键修复点**：
+- ✅ 正确处理输入格式 `[T, H, W, C]` 到 `[T, C, H, W]` 的转换
+- ✅ 归一化时 `mean/std` 形状为 `[1, C, 1, 1]`，与 `[T, C, H, W]` 兼容，支持广播
+- ✅ 避免维度不匹配错误（RuntimeError: The size of tensor a (224) must match the size of tensor b (2)）
+
+**输出格式说明**：
+- `weak_aug` 内部处理使用 `[T, C, H, W]` 格式进行 resize 和归一化
+- 最终输出格式取决于实现，可能是 `[T, C, H, W]` 或 `[T, H, W, C]`
+- 在 `tennis_unlabel_only_dataset.py` 中，代码期望 `[T, H, W, C]` 格式用于后续 mask 生成
 
 ### 2.3 输入到训练器的形状
 - **Batch 输入**: `[B, T, H, W, C]` = `[4, 16, 224, 384, 2]`
@@ -90,6 +128,12 @@ transform = transforms.Compose([
   - `H = 224`: 高度
   - `W = 384`: 宽度
   - `C = 2`: 光流通道数
+
+**数据格式说明**：
+- 数据已经过归一化处理（在 `weak_aug` 中完成）
+- 格式为 `[B, T, H, W, C]`，便于后续 permute 操作
+- 每个通道的值已经通过 `(x - mean) / std` 归一化
+- 在 `training_step` 中会转换为 `[B, C, T, H, W]` 格式进行模型前向传播
 
 ## 3. 训练步骤 (`training_step`)
 
@@ -310,9 +354,11 @@ optimizer.zero_grad()  # 清零梯度
 | **原始数据** | `[2, 224, 398]` | 从 .npy 文件加载 [C, H, W] |
 | **裁剪后** | `[2, 224, 384]` | 宽度裁剪（最后一个维度） |
 | **转换为 Tensor** | `[2, 224, 384]` | 已经是 [C, H, W] 格式，直接转换 |
-| **堆叠 16 帧** | `[16, 2, 224, 384]` | 时间序列 |
-| **数据增强后** | `[16, 224, 384, 2]` | 归一化 |
-| **Batch 输入** | `[4, 16, 224, 384, 2]` | Batch size=4 |
+| **堆叠 16 帧** | `[16, 2, 224, 384]` | 时间序列 [T, C, H, W] |
+| **转换为 [T, H, W, C]** | `[16, 224, 384, 2]` | 准备输入 weak_aug |
+| **weak_aug 处理** | `[16, 2, 224, 384]` | 内部：permute → resize → normalize，输出 [T, C, H, W] |
+| **转换回 [T, H, W, C]** | `[16, 224, 384, 2]` | 用于后续 mask 生成（如果需要） |
+| **Batch 输入** | `[4, 16, 224, 384, 2]` | Batch size=4，格式 [B, T, H, W, C] |
 | **第一次 permute** | `[4, 224, 16, 384, 2]` | 调整维度顺序 |
 | **第二次 permute** | `[4, 2, 16, 224, 384]` | [B, C, T, H, W] |
 | **Patch Embedding** | `[4, 2688, 1024]` | 转换为 tokens |
