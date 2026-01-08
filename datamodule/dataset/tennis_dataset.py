@@ -162,17 +162,20 @@ class TennisDataset(torch.utils.data.Dataset):
 
             if path.exists():
                 frame = np.load(str(path))
+                # 实际维度是 [C, H, W] = [2, 224, 398]
+                C, H, original_width = frame.shape
+                target_width = 384
+                # 裁剪宽度维度：frame[C, H, W] -> frame[C, H, 384]
+                if original_width != target_width:
+                    start_x = (original_width - target_width) // 2
+                    frame = frame[:, :, start_x: start_x + target_width]
             else:
-
                 # 生成默认光流张量（全零）
-                H, W = 224, 384  # 根据配置设置
-                frame = np.zeros((H, W, 2), dtype=np.float32)
+                frame = np.zeros((2, 224, 384), dtype=np.float32)  # [C, H, W]
                 # print(f"光流文件缺失: {path}, 使用零张量替代")
 
-                # frame = frames[-1]
-
-            # 转换为张量并调整维度
-            frame = torch.from_numpy(frame).permute(2, 0, 1).float()  # [C, H, W]
+            # 转换为张量（已经是 [C, H, W] 格式，不需要 permute）
+            frame = torch.from_numpy(frame).float()  # [C=2, H=224, W=384]
             # print("-----转换为张量并调整维度-----", frame.size())
         elif mode == "pose":
             dir_to_pose_frame = str(dir_to_img_frame).replace(
@@ -223,14 +226,15 @@ class TennisDataset(torch.utils.data.Dataset):
                 raise FileNotFoundError(f"光流文件缺失: {path}")  # 严格报错，避免静默失败
 
             # print(f"_get_frame_unlabel 光流数据形状: {frame.shape}") # (2, 224, 398)
-            # 居中裁剪宽度至 384
-            _, original_width, _ = frame.shape
+            # 实际维度是 [C, H, W] = [2, 224, 398]
+            C, H, original_width = frame.shape
             target_width = 384
             start_x = (original_width - target_width) // 2  # 计算起始列
-            cropped_flow = frame[:, start_x: start_x + target_width, :]  # 形状 (224, 384, 2)
+            # 裁剪宽度维度：frame[C, H, W] -> frame[C, H, 384]
+            cropped_flow = frame[:, :, start_x: start_x + target_width]  # 形状 (2, 224, 384)
 
-            # 转换为张量并调整维度
-            flow_tensor = torch.from_numpy(frame).permute(2, 0, 1).float()  # [C=2, H, W]
+            # 转换为张量（已经是 [C, H, W] 格式，不需要 permute）
+            flow_tensor = torch.from_numpy(cropped_flow).float()  # [C=2, H=224, W=384]
             # print(f"tennis_dataset _get_frame_unlabel -> flow_tensor: {flow_tensor.shape}")
 
         elif mode == "pose":

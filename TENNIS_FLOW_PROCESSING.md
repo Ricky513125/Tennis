@@ -5,24 +5,25 @@
 ### 1.1 文件路径
 - **数据目录**: `/mnt/ssd2/lingyu/Tennis/data/TENNIS/tennis_flows/{video_id}/`
 - **文件格式**: `pair_{frame_id:05d}.npy` (例如: `pair_00041.npy`)
-- **数据格式**: NumPy 数组，形状为 `[H, W, 2]`，其中：
+- **数据格式**: NumPy 数组，形状为 `[C, H, W] = [2, 224, 398]`，其中：
+  - `C = 2` (光流的两个通道：x 和 y 方向的运动)
   - `H = 224` (高度)
   - `W = 398` (原始宽度，会被裁剪到 384)
-  - `C = 2` (光流的两个通道：x 和 y 方向的运动)
 
 ### 1.2 数据加载过程 (`tennis_dataset.py`)
 
 ```python
 # 1. 从 .npy 文件加载光流数据
-frame = np.load(path)  # shape: [224, 398, 2]
+frame = np.load(path)  # shape: [2, 224, 398] (实际维度是 [C, H, W])
 
 # 2. 宽度裁剪：从 398 裁剪到 384 (居中裁剪)
-H, original_width, C = frame.shape  # [224, 398, 2]
+C, H, original_width = frame.shape  # [2, 224, 398]
 start_x = (398 - 384) // 2 = 7
-cropped_flow = frame[:, 7:7+384, :]  # [224, 384, 2]
+cropped_flow = frame[:, :, 7:7+384]  # [2, 224, 384]
+# 注意：维度是 [C, H, W]，所以裁剪的是最后一个维度（宽度）
 
-# 3. 转换为 Tensor 并调整维度
-flow_tensor = torch.from_numpy(cropped_flow).permute(2, 0, 1).float()
+# 3. 转换为 Tensor（已经是 [C, H, W] 格式，不需要 permute）
+flow_tensor = torch.from_numpy(cropped_flow).float()
 # 最终形状: [C=2, H=224, W=384]
 ```
 
@@ -48,11 +49,37 @@ video_frames = transform.weak_aug(video_frames)  # 归一化
 - **Mean**: `[0.0507, 0.4671]` (两个通道的均值)
 - **Std**: `[10.9280, 8.6857]` (两个通道的标准差)
 
+⚠️ **重要提示**: 这些参数目前是硬编码在配置文件中的，**应该根据实际数据计算**！
+
+**为什么需要计算？**
+- 不同数据集的光流数据分布可能不同
+- 正确的归一化参数可以提高训练稳定性和效果
+- 这些参数应该基于训练数据的统计特性
+
+**如何计算？**
+使用提供的脚本 `calculate_flow_statistics.py`：
+```bash
+# 计算所有 flow 文件的统计信息
+python3 calculate_flow_statistics.py --input /mnt/ssd2/lingyu/Tennis/data/TENNIS/tennis_flows
+
+# 只采样部分文件（更快）
+python3 calculate_flow_statistics.py --input /mnt/ssd2/lingyu/Tennis/data/TENNIS/tennis_flows --sample 1000
+
+# 保存结果到文件
+python3 calculate_flow_statistics.py --input /mnt/ssd2/lingyu/Tennis/data/TENNIS/tennis_flows --output flow_stats.json
+```
+
+计算完成后，将结果更新到 `configs/data_module/modality/flow.yaml`：
+```yaml
+mean: [计算得到的均值1, 计算得到的均值2]
+std: [计算得到的标准差1, 计算得到的标准差2]
+```
+
 ### 2.2 数据增强 (`DataAugmentationForUnlabelMM`)
 ```python
 transform = transforms.Compose([
     ToTensor(),  # 转换为 Tensor
-    transforms.Normalize(mean=[0.0507, 0.4671], std=[10.9280, 8.6857])
+    transforms.Normalize(mean=self.mean, std=self.std)  # 从配置读取
 ])
 ```
 
@@ -280,9 +307,9 @@ optimizer.zero_grad()  # 清零梯度
 
 | 阶段 | 形状 | 说明 |
 |------|------|------|
-| **原始数据** | `[224, 398, 2]` | 从 .npy 文件加载 |
-| **裁剪后** | `[224, 384, 2]` | 宽度裁剪 |
-| **转换为 Tensor** | `[2, 224, 384]` | permute(2,0,1) |
+| **原始数据** | `[2, 224, 398]` | 从 .npy 文件加载 [C, H, W] |
+| **裁剪后** | `[2, 224, 384]` | 宽度裁剪（最后一个维度） |
+| **转换为 Tensor** | `[2, 224, 384]` | 已经是 [C, H, W] 格式，直接转换 |
 | **堆叠 16 帧** | `[16, 2, 224, 384]` | 时间序列 |
 | **数据增强后** | `[16, 224, 384, 2]` | 归一化 |
 | **Batch 输入** | `[4, 16, 224, 384, 2]` | Batch size=4 |

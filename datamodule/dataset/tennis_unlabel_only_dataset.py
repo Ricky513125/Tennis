@@ -55,18 +55,20 @@ class TennisUnlabelOnlyDataset(torch.utils.data.Dataset):
             if path.exists():
                 frame = np.load(str(path))
             else:
-                H, W = 224, 384
-                frame = np.zeros((H, W, 2), dtype=np.float32)
+                # 生成默认光流张量（全零），维度应该是 [C, H, W]
+                frame = np.zeros((2, 224, 384), dtype=np.float32)  # [C, H, W]
 
+            # 实际维度是 [C, H, W] = [2, 224, 398]
             # 居中裁剪宽度至 384（如果需要）
-            H, original_width, C = frame.shape
+            C, H, original_width = frame.shape
             target_width = 384
             if original_width != target_width:
                 start_x = (original_width - target_width) // 2
-                frame = frame[:, start_x: start_x + target_width, :]
+                # 裁剪宽度维度：frame[C, H, W] -> frame[C, H, 384]
+                frame = frame[:, :, start_x: start_x + target_width]
 
-            # 转换为张量并调整维度 [H, W, C] -> [C, H, W]
-            frame = torch.from_numpy(frame).permute(2, 0, 1).float()
+            # 转换为张量（已经是 [C, H, W] 格式，不需要 permute）
+            frame = torch.from_numpy(frame).float()  # [C=2, H=224, W=384]
         elif mode == "pose":
             dir_to_pose_frame = str(dir_to_img_frame).replace(
                 "vid_frames_224", "hand-pose/heatmap"
