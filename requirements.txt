@@ -1,0 +1,19 @@
+# Core Deep Learning Frameworks
+torch>=1.12.0
+torchvision>=0.13.0
+pytorch-lightning>=1.8.0
+
+# Configuration Management
+hydra-core>=1.2.0
+omegaconf>=2.2.0
+
+# Data Processing
+numpy>=1.21.0
+Pillow>=9.0.0
+einops>=0.4.0
+
+# Utilities
+tqdm>=4.64.0
+tensorboardX>=2.5.0
+timm>=0.6.0
+packaging>=21.0

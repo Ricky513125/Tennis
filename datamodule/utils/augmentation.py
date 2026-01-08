@@ -229,20 +229,17 @@ class DataAugmentationForUnlabelMM(object):
     def _construct_weak_aug(self):
         self.weak_aug = transforms.Compose(
             [
-                # ToTensor(),
-                # 元宝添加
-                # transforms.RandomResizedCrop(self.input_size),
-                #
-                # transforms.Normalize(mean=self.mean, std=self.std),
-
-                # 0415 1620
-                # 调整每帧的尺寸
+                # 输入格式: [T, H, W, C]
+                # 第一步: 转换为 [T, C, H, W]
+                transforms.Lambda(lambda x: x.permute(0, 3, 1, 2) if x.dim() == 4 and x.shape[-1] in [2, 3, 17, 21] else x),
+                # 第二步: 调整每帧的尺寸（如果需要）
+                # 如果已经是目标尺寸，跳过 resize
                 transforms.Lambda(lambda x: torch.stack([
                     transforms.functional.resize(frame.unsqueeze(0), self.input_size)  # [1, C, H, W]
                     for frame in x
-                ]).squeeze(1)),  # 结果形状 [T, C, H, W]
-                # 归一化
-                # print("x.shape=", x.shape)
+                ]).squeeze(1) if x.shape[2:] != torch.Size(self.input_size) else x),  # 结果形状 [T, C, H, W]
+                # 第三步: 归一化
+                # x 形状: [T, C, H, W], mean/std 形状: [1, C, 1, 1]
                 transforms.Lambda(lambda x: (x - self.mean) / self.std),
             ]
         )
