@@ -1,0 +1,21 @@
+# Skeleton modality configuration
+mode: skeleton
+input_size: 56  # Heatmap size
+
+# Mean and std for skeleton heatmaps (normalized)
+# Assuming heatmap format [K, H, W] where K=17 keypoints
+# We need mean and std for each keypoint channel
+mean: [
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0
+]  # Mean for each keypoint channel (17 channels)
+std: [
+    1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+    1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+    1.0, 1.0, 1.0
+]  # Std for each keypoint channel (17 channels)
+
+# Number of input channels (keypoints converted to heatmaps)
+# For skeleton: we convert keypoints to heatmaps, so in_chans = num_keypoints
+in_chans: 17  # Number of keypoints (COCO format)

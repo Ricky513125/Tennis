@@ -122,6 +122,13 @@ class VideoMAETrainer(pl.LightningModule):
                 std = torch.as_tensor(self.cfg.data_module.modality.std)[
                     None, :, None, None, None
                 ].type_as(unlabel_frames)
+            elif self.cfg.data_module.modality.mode == "skeleton":
+                mean = torch.as_tensor(self.cfg.data_module.modality.mean)[
+                    None, :, None, None, None
+                ].type_as(unlabel_frames)
+                std = torch.as_tensor(self.cfg.data_module.modality.std)[
+                    None, :, None, None, None
+                ].type_as(unlabel_frames)
 
             # 调整维度 [B, H, T, W, C] -> [B, C, T, H, W]
             unlabel_frames = unlabel_frames.permute(0, 4, 2, 1, 3)
