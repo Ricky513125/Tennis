@@ -11,7 +11,7 @@ normalize_target: True
 encoder_embed_dim: 384
 
 # Optimizer parameters
-epochs: 100 # training times
+epochs: 10 # training times (临时调整为 10 用于测试)
 
 opt: adamw # adamw optimizer, is an update, weight decay
 opt_eps: 1e-8

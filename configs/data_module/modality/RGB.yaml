@@ -3,8 +3,13 @@
 mode: RGB
 #patch_size: [16, 16]
 #input_size: 224
-mean: [0.485, 0.456, 0.406]
-std: [0.229, 0.224, 0.225]
+
+# 归一化参数 (Mean 和 Std)
+# ⚠️ 注意: 当前使用的是 ImageNet 的默认值
+# 建议使用 calculate_rgb_statistics.py 脚本根据实际数据计算
+# 使用方法: python3 calculate_rgb_statistics.py --input /mnt/ssd2/lingyu/Tennis/data/TENNIS/vid_frames_224
+mean: [0.485, 0.456, 0.406]  # ImageNet 默认值，建议根据实际数据计算
+std: [0.229, 0.224, 0.225]  # ImageNet 默认值，建议根据实际数据计算
 patch_size: [16, 16] # 14 14
 #input_size: [384,224] # 384, 224
 #img_size: [384, 224]  # 明确输入分辨率 [高度, 宽度]
