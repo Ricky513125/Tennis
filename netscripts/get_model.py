@@ -37,7 +37,7 @@ def get_model(cfg, ckpt_pth=None, input_size=224, patch_size=16, in_chans=None):
             ckpt_pth=cfg.trainer.pretrain,
             img_size=cfg.data_module.modality.input_size,
             patch_size=cfg.data_module.modality.patch_size[0],
-            in_chans=cfg.trainer.modality.in_chans,
+            encoder_in_chans=cfg.trainer.modality.in_chans,  # 使用 encoder_in_chans 而不是 in_chans
             decoder_num_classes=cfg.trainer.modality.decoder_num_classes,
         )
 
