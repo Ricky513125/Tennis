@@ -1,0 +1,14 @@
+# Modality specific parameters
+# Skeleton modality parameters
+# model parameters
+in_chans: 17  # 17 keypoints converted to heatmaps
+# decoder_num_classes calculation:
+# For 56x56 heatmap, patch_size=16: patches = (56//16)^2 = 3^2 = 9
+# decoder_num_classes = in_chans * tubelet * patches^2 = 17 * 2 * 9 = 306
+# But if input is resized to 224x224: patches = (224//16)^2 = 14^2 = 196
+# decoder_num_classes = 17 * 2 * 196 = 6664
+# Using a value similar to pose modality (which uses 32 patches)
+decoder_num_classes: 306  # 17 * 2 * 9 (for 56x56 input with patch_size=16)
+
+# loss weight
+lambda_ce: 0.01  # Not used in unlabel-only mode, but kept for compatibility
