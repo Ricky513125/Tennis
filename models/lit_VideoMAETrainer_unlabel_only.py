@@ -144,7 +144,41 @@ class VideoMAETrainer(pl.LightningModule):
             new_masked_pos = bool_masked_pos
             if bool_masked_pos.shape[1] > videos_patch.shape[1]:
                 new_masked_pos = bool_masked_pos[:, :videos_patch.shape[1]]
-            labels = videos_patch[new_masked_pos].reshape(B, -1, C)
+            elif bool_masked_pos.shape[1] < videos_patch.shape[1]:
+                # 如果 mask 长度小于 patches 数量，需要扩展
+                pad_length = videos_patch.shape[1] - bool_masked_pos.shape[1]
+                new_masked_pos = torch.cat([
+                    bool_masked_pos,
+                    torch.zeros(B, pad_length, dtype=torch.bool, device=bool_masked_pos.device)
+                ], dim=1)
+            
+            # 按 batch 提取被 mask 的 patches
+            # videos_patch: [B, num_patches, C]
+            # new_masked_pos: [B, num_patches]
+            labels_list = []
+            for i in range(B):
+                masked_patches = videos_patch[i][new_masked_pos[i]]  # [num_masked_i, C]
+                labels_list.append(masked_patches)
+            
+            # 找到每个 batch 中被 mask 的 patch 数量
+            num_masked_per_batch = [new_masked_pos[i].sum().item() for i in range(B)]
+            max_masked = max(num_masked_per_batch)
+            
+            # 如果每个 batch 的 mask 数量不同，需要 padding 或截断
+            # 但通常 mask_ratio 是固定的，所以应该相同
+            if len(set(num_masked_per_batch)) == 1:
+                # 所有 batch 的 mask 数量相同，可以直接 stack
+                labels = torch.stack(labels_list, dim=0)  # [B, num_masked, C]
+            else:
+                # 如果不同，需要 padding 到最大长度
+                padded_labels = []
+                for i, label in enumerate(labels_list):
+                    if label.shape[0] < max_masked:
+                        padding = torch.zeros(max_masked - label.shape[0], C, 
+                                             dtype=label.dtype, device=label.device)
+                        label = torch.cat([label, padding], dim=0)
+                    padded_labels.append(label)
+                labels = torch.stack(padded_labels, dim=0)  # [B, max_masked, C]
 
         # 前向传播
         preds, _ = self.model(unlabel_frames, bool_masked_pos)
