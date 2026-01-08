@@ -486,13 +486,55 @@ class PretrainVisionTransformer(nn.Module):
         expand_pos_embed = (
             self.pos_embed.expand(B, -1, -1).type_as(x).to(x.device).clone().detach()
         )
-        # print('---expand_pos_embed---', expand_pos_embed.shape)
-        # print('---mask---', mask)
-        # print('---mask.shape---', mask.shape)
-        # mask_reshaped = mask.reshape(4, 16, 512)  # 重新调整 mask 的形状
-        # print('---mask.shape---', mask.shape)
-        pos_emd_vis = expand_pos_embed[~mask].reshape(B, -1, C)
-        pos_emd_mask = expand_pos_embed[mask].reshape(B, -1, C)
+        # 确保 mask 形状匹配
+        if mask.shape[1] != expand_pos_embed.shape[1]:
+            if mask.shape[1] > expand_pos_embed.shape[1]:
+                mask = mask[:, :expand_pos_embed.shape[1]]
+            else:
+                pad_length = expand_pos_embed.shape[1] - mask.shape[1]
+                mask = torch.cat([
+                    mask,
+                    torch.zeros(B, pad_length, dtype=mask.dtype, device=mask.device)
+                ], dim=1)
+        
+        # 按 batch 分别提取位置编码
+        pos_emd_vis_list = []
+        pos_emd_mask_list = []
+        for i in range(B):
+            pos_emd_vis_i = expand_pos_embed[i][~mask[i]]  # [num_visible_i, C]
+            pos_emd_mask_i = expand_pos_embed[i][mask[i]]  # [num_masked_i, C]
+            pos_emd_vis_list.append(pos_emd_vis_i)
+            pos_emd_mask_list.append(pos_emd_mask_i)
+        
+        # 检查每个 batch 的可见和 mask 数量
+        num_visible_per_batch = [(~mask[i]).sum().item() for i in range(B)]
+        num_masked_per_batch = [mask[i].sum().item() for i in range(B)]
+        
+        # 如果所有 batch 的数量相同，直接 stack
+        if len(set(num_visible_per_batch)) == 1 and len(set(num_masked_per_batch)) == 1:
+            pos_emd_vis = torch.stack(pos_emd_vis_list, dim=0)  # [B, num_visible, C]
+            pos_emd_mask = torch.stack(pos_emd_mask_list, dim=0)  # [B, num_masked, C]
+        else:
+            # 如果不同，需要 padding（理论上不应该发生）
+            max_visible = max(num_visible_per_batch)
+            max_masked = max(num_masked_per_batch)
+            padded_vis = []
+            padded_mask = []
+            for i in range(B):
+                if pos_emd_vis_list[i].shape[0] < max_visible:
+                    padding = torch.zeros(max_visible - pos_emd_vis_list[i].shape[0], C,
+                                         dtype=pos_emd_vis_list[i].dtype, 
+                                         device=pos_emd_vis_list[i].device)
+                    pos_emd_vis_list[i] = torch.cat([pos_emd_vis_list[i], padding], dim=0)
+                if pos_emd_mask_list[i].shape[0] < max_masked:
+                    padding = torch.zeros(max_masked - pos_emd_mask_list[i].shape[0], C,
+                                         dtype=pos_emd_mask_list[i].dtype,
+                                         device=pos_emd_mask_list[i].device)
+                    pos_emd_mask_list[i] = torch.cat([pos_emd_mask_list[i], padding], dim=0)
+                padded_vis.append(pos_emd_vis_list[i])
+                padded_mask.append(pos_emd_mask_list[i])
+            pos_emd_vis = torch.stack(padded_vis, dim=0)  # [B, max_visible, C]
+            pos_emd_mask = torch.stack(padded_mask, dim=0)  # [B, max_masked, C]
         x_full = torch.cat(
             [x_vis + pos_emd_vis, self.mask_token + pos_emd_mask], dim=1
         )  # [B, N, C_d]
