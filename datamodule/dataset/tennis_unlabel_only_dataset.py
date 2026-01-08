@@ -102,17 +102,12 @@ class TennisUnlabelOnlyDataset(torch.utils.data.Dataset):
 
         # 根据模式分别处理
         if self.mode == "RGB":
-            # RGB 模式：PIL Image 列表，对每帧应用 weak_aug（会转换为 Tensor）
-            processed_frames = []
-            for frame in unlabel_frames:
-                # weak_aug 期望 PIL Image，返回 Tensor [C, H, W]
-                processed_frame = self.transform.weak_aug(frame)
-                processed_frames.append(processed_frame)
+            # RGB 模式：PIL Image 列表
+            # weak_aug 期望 PIL Image 列表，返回 Tensor [T, C, H, W]
+            # 注意：ToTensor 内部会处理列表并 stack
+            unlabel_frames = self.transform.weak_aug(unlabel_frames)
             
-            # Stack 所有帧 [T, C, H, W]
-            unlabel_frames = torch.stack(processed_frames, dim=0)
-            
-            # 转换为 [T, H, W, C] 用于后续处理
+            # weak_aug 输出是 [T, C, H, W]，转换为 [T, H, W, C] 用于后续处理
             unlabel_frames = unlabel_frames.permute(0, 2, 3, 1)
         else:
             # Flow/Pose 模式：已经是 Tensor 或 numpy array

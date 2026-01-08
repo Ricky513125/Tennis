@@ -96,17 +96,20 @@ class DataAugmentationForUnlabelRGB(object):
         self, cfg, input_size=224, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
     ):
         self.cfg = cfg
-        self.input_size = input_size
-        self.mean = mean
-        self.std = std
+        # 元宝添加：先设置 input_size 和 mean/std
+        self.input_size = [224, 384] if isinstance(input_size, (list, tuple)) else input_size
+        if isinstance(input_size, (list, tuple)) and len(input_size) == 2:
+            self.input_size = input_size
+        else:
+            self.input_size = [input_size, input_size] if isinstance(input_size, int) else [224, 384]
+        
+        # 转换为 Tensor 格式
+        self.mean = torch.tensor(mean).view(-1, 1, 1) if isinstance(mean, list) else mean
+        self.std = torch.tensor(std).view(-1, 1, 1) if isinstance(std, list) else std
+        
         self._construct_no_aug()
         self._construct_weak_aug()
         self._construct_strong_aug()
-
-        # 元宝添加
-        self.input_size = [224, 384]
-        self.mean = torch.tensor(mean).view(-1, 1, 1)
-        self.std = torch.tensor(std).view(-1, 1, 1)
 
     def _construct_no_aug(self):
         self.no_aug = transforms.Compose(
@@ -118,14 +121,53 @@ class DataAugmentationForUnlabelRGB(object):
         )
 
     def _construct_weak_aug(self):
+        # 自定义 transform 来处理视频 Tensor [T, C, H, W]
+        class VideoRandomResizedCrop:
+            def __init__(self, size):
+                self.size = size if isinstance(size, (tuple, list)) else (size, size)
+                self.crop = transforms.RandomResizedCrop(self.size)
+            
+            def __call__(self, tensor):
+                # tensor: [T, C, H, W]
+                # 对每一帧分别应用 RandomResizedCrop
+                T, C, H, W = tensor.shape
+                cropped_frames = []
+                for t in range(T):
+                    frame = tensor[t]  # [C, H, W]
+                    # RandomResizedCrop 期望 PIL Image 或 [C, H, W] Tensor
+                    # 需要先转换为 PIL Image
+                    frame_pil = transforms.ToPILImage()(frame)
+                    cropped_frame = self.crop(frame_pil)
+                    cropped_frames.append(transforms.ToTensor()(cropped_frame))
+                return torch.stack(cropped_frames, dim=0)  # [T, C, H, W]
+        
+        class VideoRandomHorizontalFlip:
+            def __init__(self, p=0.5):
+                self.p = p
+                self.flip = transforms.RandomHorizontalFlip(p=p)
+            
+            def __call__(self, tensor):
+                # tensor: [T, C, H, W]
+                # 对每一帧分别应用 RandomHorizontalFlip（使用相同的随机性）
+                if torch.rand(1) < self.p:
+                    return torch.flip(tensor, dims=[3])  # 水平翻转最后一维（宽度）
+                return tensor
+        
         self.weak_aug = transforms.Compose(
             [
-                ToTensor(),
-                transforms.RandomResizedCrop(self.input_size),
-                transforms.RandomHorizontalFlip(p=0.5),
-                transforms.Normalize(mean=self.mean, std=self.std),
+                ToTensor(),  # PIL Image 列表 -> [T, C, H, W]
+                VideoRandomResizedCrop(self.input_size),  # [T, C, H, W] -> [T, C, H, W]
+                VideoRandomHorizontalFlip(p=0.5),  # [T, C, H, W] -> [T, C, H, W]
+                transforms.Lambda(lambda x: self._normalize_tensor(x)),  # 归一化
             ]
         )
+    
+    def _normalize_tensor(self, tensor):
+        # tensor: [T, C, H, W]
+        # mean/std: [C] -> [1, C, 1, 1]
+        mean = self.mean.view(1, -1, 1, 1)
+        std = self.std.view(1, -1, 1, 1)
+        return (tensor - mean) / std
 
     def _construct_strong_aug(self):
         self.strong_aug = transforms.Compose(
