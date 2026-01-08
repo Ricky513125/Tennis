@@ -7,27 +7,29 @@
 - **文件格式**: `{frame_id:06d}.jpg` (例如: `000001.jpg`)
 - **数据格式**: JPEG 图像，PIL Image 对象
 
-### 1.2 数据加载过程 (`tennis_dataset.py`)
+### 1.2 数据加载过程 (`tennis_unlabel_only_dataset.py`)
 
 ```python
 # 1. 从 .jpg 文件加载 RGB 图像
 frame = Image.open(path)  # PIL Image, mode='RGB'
-# 维度: [H, W, C] = [224, 384, 3] (或根据实际图像尺寸)
+# 维度: PIL Image 格式，实际像素为 [H, W, C] = [224, 384, 3] (或根据实际图像尺寸)
 
-# 2. 图像已经是标准格式，不需要裁剪（除非尺寸不一致）
-# PIL Image 格式: [H, W, C] = [224, 384, 3]
+# 2. 加载 16 帧 RGB 图像，组成列表
+unlabel_frames = [frame_1, frame_2, ..., frame_16]
+# 每个 frame: PIL Image 对象
 ```
 
-### 1.3 批次数据组装
+### 1.3 数据增强处理
 
 ```python
-# 加载 16 帧 RGB 图像
-frames = [img_1, img_2, ..., img_16]
-# 每个 img: PIL Image, [H, W, C]
+# RGB 模式：PIL Image 列表
+# weak_aug 期望 PIL Image 列表，返回 Tensor [T, C, H, W]
+unlabel_frames = self.transform.weak_aug(unlabel_frames)
+# 输出: [T, C, H, W] = [16, 3, 224, 384]
 
-# 应用数据增强（归一化等）
-video_frames = [transform.weak_aug(frame) for frame in frames]
-# 输出形状: [T=16, H=224, W=384, C=3]
+# 转换为 [T, H, W, C] 格式用于后续处理
+unlabel_frames = unlabel_frames.permute(0, 2, 3, 1)
+# 输出: [T, H, W, C] = [16, 224, 384, 3]
 ```
 
 ## 2. 数据预处理阶段
@@ -63,14 +65,45 @@ std: [计算得到的标准差R, 计算得到的标准差G, 计算得到的标�
 ```
 
 ### 2.2 数据增强 (`DataAugmentationForUnlabelRGB`)
+
+数据增强在 `weak_aug` 方法中进行，处理流程如下：
+
 ```python
-transform = transforms.Compose([
-    ToTensor(),  # 转换为 Tensor [C, H, W]
-    transforms.RandomResizedCrop(input_size),  # 随机裁剪和缩放
-    transforms.RandomHorizontalFlip(p=0.5),  # 随机水平翻转
-    transforms.Normalize(mean=self.mean, std=self.std)  # 归一化
-])
+# 输入: PIL Image 列表 [img_1, img_2, ..., img_16]
+
+# 第一步: ToTensor() - 将 PIL Image 列表转换为 Tensor
+# ToTensor 内部处理：
+#   - 对每个 PIL Image 调用 transforms.ToTensor() -> [C, H, W]
+#   - Stack 所有帧 -> [T, C, H, W] = [16, 3, 224, 384]
+video_tensor = ToTensor()(unlabel_frames)  # [T, C, H, W]
+
+# 第二步: VideoRandomResizedCrop - 对每帧分别应用随机裁剪
+# 对每一帧：
+#   - 转换为 PIL Image
+#   - 应用 RandomResizedCrop (随机裁剪到 [224, 384])
+#   - 转换回 Tensor [C, H, W]
+#   - Stack -> [T, C, H, W] = [16, 3, 224, 384]
+video_tensor = VideoRandomResizedCrop([224, 384])(video_tensor)
+
+# 第三步: VideoRandomHorizontalFlip - 统一水平翻转
+# 对所有帧使用相同的随机性（要么全部翻转，要么全部不翻转）
+if torch.rand(1) < 0.5:
+    video_tensor = torch.flip(video_tensor, dims=[3])  # 翻转宽度维度
+# 输出: [T, C, H, W] = [16, 3, 224, 384]
+
+# 第四步: 归一化
+# mean/std 形状: [1, C, 1, 1] = [1, 3, 1, 1]
+# video_tensor 形状: [T, C, H, W] = [16, 3, 224, 384]
+video_tensor = (video_tensor - mean) / std  # 广播归一化
+
+# 最终输出: [T, C, H, W] = [16, 3, 224, 384]
 ```
+
+**关键实现细节**：
+- ✅ `ToTensor` 类期望 PIL Image 列表，内部会 stack 成 `[T, C, H, W]`
+- ✅ `VideoRandomResizedCrop` 对每帧分别应用裁剪，保持时间一致性
+- ✅ `VideoRandomHorizontalFlip` 对所有帧统一翻转，保持时间一致性
+- ✅ 归一化使用广播机制，`mean/std` 形状为 `[1, C, 1, 1]` 与 `[T, C, H, W]` 兼容
 
 ### 2.3 输入到训练器的形状
 - **Batch 输入**: `[B, T, H, W, C]` = `[4, 16, 224, 384, 3]`
@@ -82,18 +115,17 @@ transform = transforms.Compose([
 
 ## 3. 训练步骤 (`training_step`)
 
-### 3.1 维度调整
+### 3.1 维度调整和序列长度计算
 ```python
 # 输入: [B, T, H, W, C] = [4, 16, 224, 384, 3]
 unlabel_frames = input["unlabel_frames"]
+bool_masked_pos = input["mask"].flatten(1).to(torch.bool)  # [B, seq_length]
 
-# 第一次 permute: [B, T, H, W, C] -> [B, H, T, W, C]
-unlabel_frames = unlabel_frames.permute(0, 3, 1, 4, 2)
-# 形状: [4, 224, 16, 384, 3]
+# 获取输入维度
+B, T, H, W, C = unlabel_frames.shape  # [4, 16, 224, 384, 3]
 
-# 计算序列长度
-B, H, T, W, C = unlabel_frames.shape  # [4, 224, 16, 384, 3]
-seq_length = (H // 16) * (W // 16) * (T // 2)
+# 计算序列长度（patch 数量）
+seq_length = (H // self.patch_size) * (W // self.patch_size) * (T // 2)
          = (224 // 16) * (384 // 16) * (16 // 2)
          = 14 * 24 * 8
          = 2688
@@ -101,24 +133,36 @@ seq_length = (H // 16) * (W // 16) * (T // 2)
 
 ### 3.2 生成 Mask
 ```python
-mask_ratio = 0.75
-num_masked_per_batch = int(2688 * 0.75) = 2016
+# 如果 mask 长度不匹配，重新生成
+if bool_masked_pos.shape[1] != seq_length:
+    mask_ratio = 0.75
+    num_masked_per_batch = int(seq_length * mask_ratio)  # 2016
+    
+    # 为每个 batch 独立生成随机 mask
+    rand_indices = torch.rand(B, seq_length, device=unlabel_frames.device).argsort(dim=-1)
+    bool_masked_pos = torch.zeros(B, seq_length, dtype=torch.bool, device=unlabel_frames.device)
+    for i in range(B):
+        bool_masked_pos[i, rand_indices[i, :num_masked_per_batch]] = True
 
-# 随机选择要 mask 的位置
-bool_masked_pos = torch.zeros(B, seq_length, dtype=torch.bool)
-# 形状: [4, 2688]
-# 每个样本随机 mask 2016 个 patch
+# 形状: [B, seq_length] = [4, 2688]
+# 每个样本随机 mask 2016 个 patch（75%）
 ```
 
 ### 3.3 反归一化（准备 label）
 ```python
-# 第二次 permute: [B, H, T, W, C] -> [B, C, T, H, W]
-unlabel_frames = unlabel_frames.permute(0, 4, 2, 1, 3)
+# 转换为 [B, C, T, H, W] 格式
+unlabel_frames = unlabel_frames.permute(0, 4, 1, 2, 3)  # [B, T, H, W, C] -> [B, C, T, H, W]
 # 形状: [4, 3, 16, 224, 384]
 
-# 反归一化（恢复到原始范围）
-mean = [0.485, 0.456, 0.406]  # shape: [1, 3, 1, 1, 1]
-std = [0.229, 0.224, 0.225]  # shape: [1, 3, 1, 1, 1]
+# 计算均值和标准差（用于反归一化）
+mean = torch.as_tensor(self.cfg.data_module.modality.mean)[
+    None, :, None, None, None
+].type_as(unlabel_frames)  # shape: [1, 3, 1, 1, 1]
+std = torch.as_tensor(self.cfg.data_module.modality.std)[
+    None, :, None, None, None
+].type_as(unlabel_frames)  # shape: [1, 3, 1, 1, 1]
+
+# 反归一化（恢复到原始范围 [0, 1]）
 unnorm_videos = unlabel_frames * std + mean
 # 形状: [4, 3, 16, 224, 384]
 ```
@@ -151,12 +195,30 @@ videos_patch = rearrange(
 
 ### 3.5 提取被 Mask 的部分作为 Label
 ```python
-# videos_patch: [4, 2688, 1536]
-# bool_masked_pos: [4, 2688] (布尔掩码)
+# videos_patch: [B, num_patches, patch_dim] = [4, 2688, 1536]
+# bool_masked_pos: [B, seq_length] = [4, 2688] (布尔掩码)
 
-labels = videos_patch[bool_masked_pos].reshape(B, num_masked_per_batch, patch_dim)
-# 形状: [4, 2016, 1536]
-# 只保留被 mask 的 patch 作为重建目标
+# 确保 mask 长度匹配
+new_masked_pos = bool_masked_pos
+if bool_masked_pos.shape[1] > videos_patch.shape[1]:
+    new_masked_pos = bool_masked_pos[:, :videos_patch.shape[1]]
+elif bool_masked_pos.shape[1] < videos_patch.shape[1]:
+    # 如果 mask 长度小于 patches 数量，需要扩展
+    pad_length = videos_patch.shape[1] - bool_masked_pos.shape[1]
+    new_masked_pos = torch.cat([
+        bool_masked_pos,
+        torch.zeros(B, pad_length, dtype=torch.bool, device=bool_masked_pos.device)
+    ], dim=1)
+
+# 按 batch 分别提取被 mask 的 patches
+labels_list = []
+for i in range(B):
+    masked_patches = videos_patch[i][new_masked_pos[i]]  # [num_masked_i, patch_dim]
+    labels_list.append(masked_patches)
+
+# 如果所有 batch 的 mask 数量相同，直接 stack
+# 形状: [B, num_masked, patch_dim] = [4, 2016, 1536]
+labels = torch.stack(labels_list, dim=0)
 ```
 
 ## 4. 模型前向传播
@@ -195,9 +257,26 @@ x = x + pos_embed  # [4, 2688, 1024]
 
 #### 4.1.3 Mask 处理
 ```python
-# 只保留可见的 (unmasked) patches
-x_vis = x[~bool_masked_pos].reshape(B, -1, C)
-# 形状: [4, 672, 1024]  (672 = 2688 * 0.25, 25% 可见)
+# 确保 mask 形状匹配
+if mask.shape[1] != x.shape[1]:
+    if mask.shape[1] > x.shape[1]:
+        mask = mask[:, :x.shape[1]]
+    else:
+        pad_length = x.shape[1] - mask.shape[1]
+        mask = torch.cat([
+            mask,
+            torch.zeros(B, pad_length, dtype=mask.dtype, device=mask.device)
+        ], dim=1)
+
+# 按 batch 分别提取可见的 patches
+x_vis_list = []
+for i in range(B):
+    visible_patches = x[i][~mask[i]]  # [num_visible_i, C]
+    x_vis_list.append(visible_patches)
+
+# 如果所有 batch 的可见数量相同，直接 stack
+# 形状: [B, num_visible, C] = [4, 672, 1024]  (672 = 2688 * 0.25, 25% 可见)
+x_vis = torch.stack(x_vis_list, dim=0)
 ```
 
 #### 4.1.4 Transformer Blocks
@@ -225,10 +304,34 @@ x_vis = encoder_to_decoder(x_vis)
 # 为被 mask 的位置添加可学习的 mask token
 mask_token = nn.Parameter(torch.zeros(1, 1, 512))
 
+# 确保 mask 形状匹配 expand_pos_embed
+if mask.shape[1] != expand_pos_embed.shape[1]:
+    if mask.shape[1] > expand_pos_embed.shape[1]:
+        mask = mask[:, :expand_pos_embed.shape[1]]
+    else:
+        pad_length = expand_pos_embed.shape[1] - mask.shape[1]
+        mask = torch.cat([
+            mask,
+            torch.zeros(B, pad_length, dtype=mask.dtype, device=mask.device)
+        ], dim=1)
+
+# 按 batch 分别提取位置编码
+pos_emd_vis_list = []
+pos_emd_mask_list = []
+for i in range(B):
+    pos_emd_vis_i = expand_pos_embed[i][~mask[i]]  # [num_visible_i, C]
+    pos_emd_mask_i = expand_pos_embed[i][mask[i]]  # [num_masked_i, C]
+    pos_emd_vis_list.append(pos_emd_vis_i)
+    pos_emd_mask_list.append(pos_emd_mask_i)
+
+# Stack 位置编码
+pos_emd_vis = torch.stack(pos_emd_vis_list, dim=0)  # [B, num_visible, C]
+pos_emd_mask = torch.stack(pos_emd_mask_list, dim=0)  # [B, num_masked, C]
+
 # 组合可见 tokens 和 mask tokens
 x_full = torch.cat([
     x_vis + pos_emd_vis,      # 可见 patches + 位置编码
-    mask_token + pos_emd_mask  # mask tokens + 位置编码
+    self.mask_token + pos_emd_mask  # mask tokens + 位置编码
 ], dim=1)
 # 形状: [4, 2688, 512]
 ```
@@ -246,12 +349,11 @@ x_full = self.decoder.norm(x_full)
 #### 4.2.4 重建头 (Reconstruction Head)
 ```python
 # 线性层：将 decoder 输出投影到 patch 维度
-head = nn.Linear(512, decoder_num_classes)
+head = nn.Linear(512, decoder_num_classes)  # decoder_num_classes = 1536
 preds = head(x_full)  # [4, 2688, 1536]
 
-# 只保留被 mask 的部分
-preds = preds[bool_masked_pos].reshape(B, num_masked_per_batch, patch_dim)
-# 形状: [4, 2016, 1536]
+# 只保留被 mask 的部分（在 training_step 中处理）
+# 注意：preds 和 labels 的提取方式相同，都是按 batch 分别提取
 ```
 
 ## 5. 损失计算
@@ -298,11 +400,14 @@ optimizer.zero_grad()  # 清零梯度
 |------|------|------|
 | **原始数据** | `[224, 384, 3]` | PIL Image [H, W, C] |
 | **转换为 Tensor** | `[3, 224, 384]` | ToTensor() [C, H, W] |
-| **堆叠 16 帧** | `[16, 3, 224, 384]` | 时间序列 |
-| **数据增强后** | `[16, 224, 384, 3]` | 归一化 |
+| **PIL Image 列表** | `[16个 PIL Image]` | 时间序列 |
+| **ToTensor** | `[16, 3, 224, 384]` | 转换为 Tensor [T, C, H, W] |
+| **VideoRandomResizedCrop** | `[16, 3, 224, 384]` | 每帧随机裁剪 |
+| **VideoRandomHorizontalFlip** | `[16, 3, 224, 384]` | 统一水平翻转 |
+| **归一化** | `[16, 3, 224, 384]` | 广播归一化 |
+| **转换为 [T, H, W, C]** | `[16, 224, 384, 3]` | 用于后续处理 |
 | **Batch 输入** | `[4, 16, 224, 384, 3]` | Batch size=4 |
-| **第一次 permute** | `[4, 224, 16, 384, 3]` | 调整维度顺序 |
-| **第二次 permute** | `[4, 3, 16, 224, 384]` | [B, C, T, H, W] |
+| **转换为 [B, C, T, H, W]** | `[4, 3, 16, 224, 384]` | 用于模型处理 |
 | **Patch Embedding** | `[4, 2688, 1024]` | 转换为 tokens |
 | **Encoder 输出** | `[4, 672, 1024]` | 只保留可见 patches |
 | **Decoder 输入** | `[4, 2688, 512]` | 添加 mask tokens |
@@ -327,16 +432,22 @@ optimizer.zero_grad()  # 清零梯度
 ## 9. 数据流图
 
 ```
-.jpg 文件 [224, 384, 3]  (PIL Image: [H, W, C])
+.jpg 文件 (PIL Image: [H, W, C])
+    ↓ (加载 16 帧)
+[16个 PIL Image]
     ↓ (ToTensor)
-[3, 224, 384]  (Tensor: [C, H, W])
-    ↓ (堆叠 16 帧)
-[16, 3, 224, 384]
-    ↓ (数据增强，归一化)
-[16, 224, 384, 3]
+[T=16, C=3, H=224, W=384]
+    ↓ (VideoRandomResizedCrop)
+[T=16, C=3, H=224, W=384]
+    ↓ (VideoRandomHorizontalFlip)
+[T=16, C=3, H=224, W=384]
+    ↓ (归一化)
+[T=16, C=3, H=224, W=384]
+    ↓ (permute to [T, H, W, C])
+[T=16, H=224, W=384, C=3]
     ↓ (Batch)
 [B=4, T=16, H=224, W=384, C=3]
-    ↓ (permute)
+    ↓ (permute to [B, C, T, H, W])
 [B=4, C=3, T=16, H=224, W=384]
     ↓ (Patch Embedding)
 [B=4, N=2688, D=1024]
