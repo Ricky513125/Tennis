@@ -95,22 +95,47 @@ class TennisUnlabelOnlyDataset(torch.utils.data.Dataset):
             unlabel_frame = self._get_frame_unlabel(
                 unlabel_dir_to_img_frame, frame_name, self.mode, unlabel_frames
             )
-            
-            # 强制转换为 Tensor（如果意外得到 numpy）
-            if isinstance(unlabel_frame, np.ndarray):
-                unlabel_frame = torch.from_numpy(unlabel_frame).float()
-
             unlabel_frames.append(unlabel_frame)
 
         # 断言列表非空
         assert len(unlabel_frames) > 0, "unlabel_frames 为空，请检查数据加载逻辑"
 
-        # 转换为张量 [T, C, H, W]
-        unlabel_frames = torch.stack(unlabel_frames, dim=0)
-
-        # 应用变换
-        unlabel_frames = unlabel_frames.permute(0, 2, 3, 1)  # [T, H, W, C]
-        unlabel_frames = self.transform.weak_aug(unlabel_frames)
+        # 根据模式分别处理
+        if self.mode == "RGB":
+            # RGB 模式：PIL Image 列表，对每帧应用 weak_aug（会转换为 Tensor）
+            processed_frames = []
+            for frame in unlabel_frames:
+                # weak_aug 期望 PIL Image，返回 Tensor [C, H, W]
+                processed_frame = self.transform.weak_aug(frame)
+                processed_frames.append(processed_frame)
+            
+            # Stack 所有帧 [T, C, H, W]
+            unlabel_frames = torch.stack(processed_frames, dim=0)
+            
+            # 转换为 [T, H, W, C] 用于后续处理
+            unlabel_frames = unlabel_frames.permute(0, 2, 3, 1)
+        else:
+            # Flow/Pose 模式：已经是 Tensor 或 numpy array
+            # 转换为 Tensor
+            tensor_frames = []
+            for frame in unlabel_frames:
+                if isinstance(frame, np.ndarray):
+                    frame = torch.from_numpy(frame).float()
+                elif not isinstance(frame, torch.Tensor):
+                    raise TypeError(f"Unexpected frame type: {type(frame)}")
+                tensor_frames.append(frame)
+            
+            # Stack 所有帧 [T, C, H, W]
+            unlabel_frames = torch.stack(tensor_frames, dim=0)
+            
+            # 转换为 [T, H, W, C] 格式输入 weak_aug
+            unlabel_frames = unlabel_frames.permute(0, 2, 3, 1)  # [T, H, W, C]
+            
+            # 应用 weak_aug（内部会转换为 [T, C, H, W] 并归一化）
+            unlabel_frames = self.transform.weak_aug(unlabel_frames)
+            
+            # weak_aug 输出是 [T, C, H, W]，转换回 [T, H, W, C] 用于后续处理
+            unlabel_frames = unlabel_frames.permute(0, 2, 3, 1)  # [T, H, W, C]
 
         # 生成 mask（基于 unlabel_frames 的形状）
         T, H, W, C = unlabel_frames.shape
