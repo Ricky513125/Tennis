@@ -26,6 +26,10 @@ def get_model(cfg, ckpt_pth=None, input_size=224, patch_size=16, in_chans=None):
         elif cfg.data_module.modality.mode == "pose":
             assert cfg.trainer.modality.in_chans == 21
             assert cfg.trainer.pretrain is not None
+        elif cfg.data_module.modality.mode == "skeleton":
+            # skeleton 和 pose 类似，都是关键点数据
+            assert cfg.trainer.modality.in_chans == 17  # 17 keypoints
+            assert cfg.trainer.pretrain is not None
         else:
             raise Exception(f"{cfg.data_module.modality.mode} is not supported!")
 
