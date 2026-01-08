@@ -135,14 +135,45 @@ class PretrainVisionTransformerEncoder(nn.Module):
 
         x = x + self.pos_embed.type_as(x).to(x.device).clone().detach()
 
-        B, _, C = x.shape
+        B, num_patches, C = x.shape
         # 在forward_features方法中
-        if mask.shape[1] != x.shape[1]:  # 如果序列长度不匹配
-            mask = mask.reshape(B, -1)  # 或其他适当的reshape操作
-            mask = mask.expand(-1, x.shape[1])  # 扩展到正确长度
-        # print('forward_features: ', x.shape)
         if mask is not None:
-            x = x[~mask].reshape(B, -1, C)  # ~mask means visible
+            # 确保 mask 形状匹配
+            if mask.shape[1] != num_patches:
+                # 如果 mask 长度不匹配，调整 mask
+                if mask.shape[1] > num_patches:
+                    mask = mask[:, :num_patches]
+                else:
+                    # 如果 mask 长度小于 patches，padding False
+                    pad_length = num_patches - mask.shape[1]
+                    mask = torch.cat([
+                        mask,
+                        torch.zeros(B, pad_length, dtype=mask.dtype, device=mask.device)
+                    ], dim=1)
+            
+            # 按 batch 分别提取可见的 patches
+            x_vis_list = []
+            for i in range(B):
+                visible_patches = x[i][~mask[i]]  # [num_visible_i, C]
+                x_vis_list.append(visible_patches)
+            
+            # 找到每个 batch 中可见的 patch 数量
+            num_visible_per_batch = [(~mask[i]).sum().item() for i in range(B)]
+            max_visible = max(num_visible_per_batch)
+            
+            # 如果每个 batch 的可见数量相同，直接 stack
+            if len(set(num_visible_per_batch)) == 1:
+                x = torch.stack(x_vis_list, dim=0)  # [B, num_visible, C]
+            else:
+                # 如果不同，需要 padding 到最大长度（理论上不应该发生，但为了安全）
+                padded_x_vis = []
+                for i, x_vis in enumerate(x_vis_list):
+                    if x_vis.shape[0] < max_visible:
+                        padding = torch.zeros(max_visible - x_vis.shape[0], C,
+                                             dtype=x_vis.dtype, device=x_vis.device)
+                        x_vis = torch.cat([x_vis, padding], dim=0)
+                    padded_x_vis.append(x_vis)
+                x = torch.stack(padded_x_vis, dim=0)  # [B, max_visible, C]
 
         if self.use_checkpoint:
             for blk in self.blocks:
