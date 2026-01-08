@@ -82,29 +82,46 @@ class TennisSkeletonDataset(torch.utils.data.Dataset):
             with open(pkl_path, 'rb') as f:
                 data = pickle.load(f, encoding='latin1')
             
-            keypoints = data['keypoint']  # [N, K, 2/3] 或 [M, N, K, 2/3]
+            keypoints = data['keypoint']  # [M, N, K, 2] 或 [N, K, 2]
+            keypoint_scores = data.get('keypoint_score', None)  # [M, N, K] 或 [N, K]
             total_frames = data['total_frames']
+            img_shape = data.get('img_shape', (720, 1280))  # (H, W)
             
             # 确保 frame_name 在有效范围内
             frame_idx = min(max(0, int(frame_name) - 1), total_frames - 1)
             
             # 处理多人情况：取第一个人（person_idx=0）
-            if keypoints.ndim == 4:  # [M, N, K, 2/3]
-                frame_kpts = keypoints[0, frame_idx]  # [K, 2/3]
-            elif keypoints.ndim == 3:  # [N, K, 2/3]
-                frame_kpts = keypoints[frame_idx]  # [K, 2/3]
+            if keypoints.ndim == 4:  # [M, N, K, 2] - 多人
+                frame_kpts = keypoints[0, frame_idx]  # [K, 2]
+                if keypoint_scores is not None and keypoint_scores.ndim == 3:
+                    frame_scores = keypoint_scores[0, frame_idx]  # [K]
+                else:
+                    frame_scores = np.ones(frame_kpts.shape[0], dtype=np.float32)
+            elif keypoints.ndim == 3:  # [N, K, 2] - 单人
+                frame_kpts = keypoints[frame_idx]  # [K, 2]
+                if keypoint_scores is not None and keypoint_scores.ndim == 2:
+                    frame_scores = keypoint_scores[frame_idx]  # [K]
+                else:
+                    frame_scores = np.ones(frame_kpts.shape[0], dtype=np.float32)
             else:
                 raise ValueError(f"Unexpected keypoint shape: {keypoints.shape}")
             
-            # 如果只有 2D 坐标，补充置信度
-            if frame_kpts.shape[-1] == 2:
-                confidence = np.ones((frame_kpts.shape[0], 1), dtype=np.float32)
-                frame_kpts = np.concatenate([frame_kpts, confidence], axis=-1)
+            # 归一化坐标到 [0, 1] 范围（基于原始图像尺寸）
+            H, W = img_shape
+            frame_kpts_normalized = frame_kpts.copy().astype(np.float32)
+            frame_kpts_normalized[:, 0] = frame_kpts_normalized[:, 0] / W  # x 坐标归一化
+            frame_kpts_normalized[:, 1] = frame_kpts_normalized[:, 1] / H  # y 坐标归一化
             
-            return frame_kpts.astype(np.float32)  # [K, 3]
+            # 合并坐标和置信度：[K, 2] + [K] -> [K, 3]
+            frame_scores = frame_scores.astype(np.float32).reshape(-1, 1)
+            frame_kpts_with_score = np.concatenate([frame_kpts_normalized, frame_scores], axis=-1)
+            
+            return frame_kpts_with_score  # [K, 3] (x_norm, y_norm, confidence)
             
         except Exception as e:
             logger.warning(f"Error loading skeleton from {pkl_path} at frame {frame_name}: {e}")
+            import traceback
+            logger.debug(traceback.format_exc())
             # 返回默认值：假设 17 个关键点（COCO 格式）
             return np.zeros((17, 3), dtype=np.float32)
 
@@ -115,32 +132,36 @@ class TennisSkeletonDataset(torch.utils.data.Dataset):
         mask = torch.rand(seq_length) < 0.75  # mask_ratio=0.75
         return mask
 
-    def _keypoints_to_heatmap(self, keypoints, H=56, W=56):
+    def _keypoints_to_heatmap(self, keypoints, H=56, W=56, sigma=2.0):
         """
         将关键点转换为热图
-        keypoints: [K, 3] (x, y, confidence)
+        keypoints: [K, 3] (x_norm, y_norm, confidence)，坐标已归一化到 [0, 1]
         返回: [K, H, W] 热图
         """
         K = keypoints.shape[0]
         heatmap = np.zeros((K, H, W), dtype=np.float32)
         
-        # 归一化坐标到 [0, 1]
-        x_coords = keypoints[:, 0] / 224.0  # 假设原始图像尺寸为 224
-        y_coords = keypoints[:, 1] / 224.0
+        # 坐标已经归一化到 [0, 1]
+        x_coords = keypoints[:, 0]  # [0, 1]
+        y_coords = keypoints[:, 1]  # [0, 1]
         confidences = keypoints[:, 2]
         
         # 转换为热图坐标
-        x_indices = (x_coords * W).astype(int)
-        y_indices = (y_coords * H).astype(int)
+        x_centers = x_coords * W  # 转换为热图坐标
+        y_centers = y_coords * H
         
         # 创建高斯热图
         for k in range(K):
-            if confidences[k] > 0:
-                x_idx = np.clip(x_indices[k], 0, W - 1)
-                y_idx = np.clip(y_indices[k], 0, H - 1)
+            if confidences[k] > 0.1:  # 只处理置信度大于阈值的点
+                x_center = x_centers[k]
+                y_center = y_centers[k]
                 
-                # 简单的点热图（可以改进为高斯分布）
-                heatmap[k, y_idx, x_idx] = confidences[k]
+                # 创建高斯分布
+                y_grid, x_grid = np.ogrid[:H, :W]
+                gaussian = np.exp(-((x_grid - x_center)**2 + (y_grid - y_center)**2) / (2 * sigma**2))
+                gaussian = gaussian * confidences[k]  # 乘以置信度
+                
+                heatmap[k] = np.maximum(heatmap[k], gaussian)
         
         return heatmap
 
