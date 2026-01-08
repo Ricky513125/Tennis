@@ -82,9 +82,8 @@ class VideoMAETrainer(pl.LightningModule):
         unlabel_frames = input["unlabel_frames"]
         bool_masked_pos = input["mask"].flatten(1).to(torch.bool)  # [B, seq_length]
 
-        # 调整维度顺序
-        unlabel_frames = unlabel_frames.permute(0, 3, 1, 4, 2)  # [B, H, T, W, C]
-        B, H, T, W, C = unlabel_frames.shape
+        # 输入: [B, T, H, W, C]
+        B, T, H, W, C = unlabel_frames.shape
         
         # 计算序列长度
         seq_length = (H // self.patch_size) * (W // self.patch_size) * (T // 2)
@@ -100,6 +99,9 @@ class VideoMAETrainer(pl.LightningModule):
                 bool_masked_pos[i, rand_indices[i, :num_masked_per_batch]] = True
 
         with torch.no_grad():
+            # 先转换为 [B, C, T, H, W] 格式
+            unlabel_frames = unlabel_frames.permute(0, 4, 1, 2, 3)  # [B, T, H, W, C] -> [B, C, T, H, W]
+            
             # 计算均值和标准差
             if self.cfg.data_module.modality.mode == "RGB":
                 mean = torch.as_tensor(self.cfg.data_module.modality.mean)[
@@ -129,9 +131,6 @@ class VideoMAETrainer(pl.LightningModule):
                 std = torch.as_tensor(self.cfg.data_module.modality.std)[
                     None, :, None, None, None
                 ].type_as(unlabel_frames)
-
-            # 调整维度 [B, H, T, W, C] -> [B, C, T, H, W]
-            unlabel_frames = unlabel_frames.permute(0, 4, 2, 1, 3)
 
             # 反归一化
             unnorm_videos = unlabel_frames * std + mean  # in [0, 1]
