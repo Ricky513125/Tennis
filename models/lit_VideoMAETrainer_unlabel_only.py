@@ -3,7 +3,9 @@
 用于在无标签目标域上进行微调，不使用源域数据和分类损失
 """
 import logging
+import os
 import random
+from pathlib import Path
 
 import numpy as np
 import pytorch_lightning as pl
@@ -27,6 +29,7 @@ class VideoMAETrainer(pl.LightningModule):
         self.normalize_target = getattr(cfg.trainer, 'normalize_target', False)
         self.patch_size = 16
         self.training_step_outputs = []
+        self.log_file_path = None  # 将在 on_train_start 中初始化
 
     def configure_optimizers(self):
         total_batch_size = self.scale_lr()
@@ -197,6 +200,26 @@ class VideoMAETrainer(pl.LightningModule):
         self.training_step_outputs.append(output)
         return loss
 
+    def on_train_start(self):
+        """训练开始时创建日志文件"""
+        # 获取当前工作目录（Hydra 会切换到输出目录）
+        log_dir = Path(os.getcwd())
+        log_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 创建日志文件路径
+        modality = self.cfg.data_module.modality.mode
+        self.log_file_path = log_dir / f"training_loss_{modality}.log"
+        
+        # 写入日志文件头部
+        with open(self.log_file_path, 'w', encoding='utf-8') as f:
+            f.write("=" * 80 + "\n")
+            f.write(f"Training Log - Modality: {modality}\n")
+            f.write("=" * 80 + "\n")
+            f.write(f"{'Epoch':<8} {'Loss':<12} {'Recon Loss':<12} {'Learning Rate':<15}\n")
+            f.write("-" * 80 + "\n")
+        
+        logger.info(f"Training loss log will be saved to: {self.log_file_path}")
+
     def on_train_epoch_start(self):
         # shuffle the unlabel data loader
         unlabel_dir_to_img_frame = (
@@ -220,10 +243,19 @@ class VideoMAETrainer(pl.LightningModule):
         train_recon_loss = np.mean(
             [output["recon_loss"] for output in self.training_step_outputs]
         )
+        current_lr = self.trainer.optimizers[0].param_groups[0]["lr"]
+        
         self.log("train_loss", train_loss, on_step=False)
         self.log("train_recon_loss", train_recon_loss, on_step=False)
-        self.log("lr", self.trainer.optimizers[0].param_groups[0]["lr"])
+        self.log("lr", current_lr)
         self.training_step_outputs.clear()
+        
+        # 将损失写入日志文件
+        if self.log_file_path is not None:
+            epoch = self.trainer.current_epoch + 1  # 从 1 开始计数
+            with open(self.log_file_path, 'a', encoding='utf-8') as f:
+                f.write(f"{epoch:<8} {train_loss:<12.6f} {train_recon_loss:<12.6f} {current_lr:<15.8e}\n")
+        
         # save the model parameters
         if (self.trainer.current_epoch + 1) % self.cfg.save_ckpt_freq == 0:
             self.trainer.save_checkpoint(
