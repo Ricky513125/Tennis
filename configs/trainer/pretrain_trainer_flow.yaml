@@ -11,7 +11,7 @@ normalize_target: True
 encoder_embed_dim: 384
 
 # Optimizer parameters
-epochs: 100 # training times
+epochs: 50 # training times
 
 opt: adamw # adamw optimizer, is an update, weight decay
 opt_eps: 1e-8
@@ -22,7 +22,7 @@ weight_decay: 0.05
 lr: 1.5e-4
 warmup_lr: 1e-6
 min_lr: 1e-5
-warmup_epochs: 10
+warmup_epochs: 5
 use_checkpoint: False
 
 
