@@ -132,18 +132,22 @@ class PretrainVisionTransformerEncoder(nn.Module):
     def forward_features(self, x, mask=None):
         import logging
         logger = logging.getLogger(__name__)
-        logger.debug(f"[MODEL] Input to forward_features - x shape: {x.shape}")
-        _, _, T, _, _ = x.shape
+        B, C, T, H, W = x.shape
+        logger.info(f"[MODEL] Input to forward_features - x shape: {x.shape} (B={B}, C={C}, T={T}, H={H}, W={W})")
         x = self.patch_embed(x)
-        logger.debug(f"[MODEL] After patch_embed - x shape: {x.shape}, pos_embed shape: {self.pos_embed.shape}")
+        logger.info(f"[MODEL] After patch_embed - x shape: {x.shape}, pos_embed shape: {self.pos_embed.shape}")
         
         B, num_patches, C = x.shape
+        # 计算期望的 patches 数量
+        expected_patches = (H // 16) * (W // 16) * (T // 2)
+        logger.info(f"[MODEL] Expected patches: {expected_patches} (H={H}, W={W}, T={T}), actual patches: {num_patches}, pos_embed patches: {self.pos_embed.shape[1]}")
+        
         # 检查 pos_embed 维度是否匹配
         if self.pos_embed.shape[1] != num_patches:
             logger.warning(
                 f"Position embedding dimension mismatch: "
-                f"pos_embed has {self.pos_embed.shape[1]} patches, "
-                f"but input has {num_patches} patches. "
+                f"pos_embed has {self.pos_embed.shape[1]} patches (expected for input size), "
+                f"but input has {num_patches} patches (actual input size: H={H}, W={W}, T={T}). "
                 f"Reinitializing pos_embed dynamically..."
             )
             # 动态重新初始化 pos_embed

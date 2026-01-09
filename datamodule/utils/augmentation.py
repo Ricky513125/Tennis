@@ -342,11 +342,14 @@ class DataAugmentationForUnlabelMM(object):
             返回: [T, C, H_out, W_out]
             """
             T, C, H, W = x.shape
-            logger.debug(f"[RESIZE] Input shape: {x.shape}, target input_size: {self.input_size}, input_size_tuple: {input_size_tuple}")
+            target_H, target_W = self.input_size
+            logger.info(f"[RESIZE] Input shape: {x.shape}, target input_size: {self.input_size}, modality: {modality_mode}")
             # 检查是否需要 resize
-            if (H, W) == tuple(self.input_size):
+            if (H, W) == (target_H, target_W):
                 logger.debug(f"[RESIZE] No resize needed, already at target size")
                 return x
+            
+            logger.info(f"[RESIZE] Resizing from ({H}, {W}) to ({target_H}, {target_W})")
             
             # 对每一帧进行 resize
             resized_frames = []
@@ -380,6 +383,9 @@ class DataAugmentationForUnlabelMM(object):
                 transforms.Lambda(lambda x: (x - self.mean) / self.std),
             ]
         )
+        
+        # 添加验证：确保 weak_aug 输出正确的尺寸
+        logger.info(f"[AUGMENTATION] weak_aug constructed for modality {modality_mode}, target input_size: {self.input_size}")
 
     def _construct_strong_aug(self):
         self.strong_aug = transforms.Compose(
