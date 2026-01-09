@@ -1,9 +1,13 @@
 # Model parameters
 model: videomae_classifier_small_patch16_224
+# ⚠️ 请使用 find_checkpoints.py 脚本查找实际的 checkpoint 路径，或手动替换为实际的路径
 ckpt_path: [
-  ./output/.../pretrain_rgb/checkpoints/epoch=XX-loss=X.XXXX.ckpt,  # RGB checkpoint path
-  ./output/.../pretrain_flow/checkpoints/epoch=XX-loss=X.XXXX.ckpt,  # Flow checkpoint path
-  ./output/.../pretrain_skeleton/checkpoints/epoch=XX-loss=X.XXXX.ckpt,  # Skeleton checkpoint path
+  # 请替换为实际的 RGB checkpoint 路径，例如：
+  # ./output/2025-01-09/12-30-45/pretrain_rgb/checkpoints/epoch=50-loss=0.1234.ckpt,
+  # 请替换为实际的 Flow checkpoint 路径，例如：
+  # ./output/2025-01-09/12-30-45/pretrain_flow/checkpoints/epoch=50-loss=0.1234.ckpt,
+  # 请替换为实际的 Skeleton checkpoint 路径，例如：
+  # ./output/2025-01-09/12-30-45/pretrain_skeleton/checkpoints/epoch=50-loss=0.1234.ckpt,
 ]
 in_chans: [3, 2, 17]  # RGB, Flow, Skeleton
 use_mean_pooling: True
