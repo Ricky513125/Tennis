@@ -26,8 +26,17 @@ def main(cfg):
     random.seed(cfg.seed)
 
     # data module - 根据数据集类型选择
-    dataset_name = cfg.data_module.dataset if hasattr(cfg.data_module, 'dataset') else None
-    if dataset_name == "tennis":
+    # 检查 target_dataset 或 dataset 字段
+    dataset_name = None
+    if hasattr(cfg.data_module, 'dataset') and hasattr(cfg.data_module.dataset, 'target_dataset'):
+        dataset_name = cfg.data_module.dataset.target_dataset.lower()
+    elif hasattr(cfg.data_module, 'target_dataset'):
+        dataset_name = cfg.data_module.target_dataset.lower()
+    elif hasattr(cfg.data_module, 'dataset'):
+        # 如果 dataset 是字符串，直接使用
+        dataset_name = str(cfg.data_module.dataset).lower() if not hasattr(cfg.data_module.dataset, 'target_dataset') else None
+    
+    if dataset_name == "tennis" or (hasattr(cfg.data_module, 'dataset') and str(cfg.data_module.dataset).lower() == "tennis"):
         logger.info("Using Tennis dataset for multimodal distillation")
         data_module = TennisUnlabelCombinedMMDataModule(cfg)
     else:
