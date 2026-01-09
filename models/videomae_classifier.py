@@ -233,7 +233,12 @@ def videomae_classifier_small_patch16_224(
     **kwargs,
 ):
     # 确保 img_size 是正确的格式
-    if isinstance(img_size, (list, tuple)):
+    from omegaconf import ListConfig
+    
+    if isinstance(img_size, (list, tuple, ListConfig)):
+        # 处理 OmegaConf ListConfig
+        if isinstance(img_size, ListConfig):
+            img_size = list(img_size)
         if len(img_size) == 2:
             img_size_tuple = tuple(img_size)
         else:

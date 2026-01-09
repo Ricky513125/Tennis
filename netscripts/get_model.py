@@ -85,10 +85,13 @@ def get_model(cfg, ckpt_pth=None, input_size=224, patch_size=16, in_chans=None):
             raise Exception(f"{scale} is not supported!")
 
         # 确保 img_size 是正确的格式
-        # input_size 可能是列表 [H, W] 或单个整数
-        if isinstance(input_size, list):
+        # input_size 可能是列表 [H, W]、OmegaConf ListConfig 或单个整数
+        from omegaconf import ListConfig
+        
+        if isinstance(input_size, (list, ListConfig)):
             # 转换为元组 (H, W)，注意顺序：input_size 通常是 [H, W]
-            img_size = tuple(input_size)
+            # OmegaConf ListConfig 需要转换为普通列表再转元组
+            img_size = tuple(list(input_size))
         elif isinstance(input_size, (tuple, int)):
             img_size = input_size
         else:
