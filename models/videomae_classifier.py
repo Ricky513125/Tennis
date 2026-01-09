@@ -248,8 +248,33 @@ def videomae_classifier_small_patch16_224(
     )
     if ckpt_pth is not None:
         from pathlib import Path
+        import os
         
+        # 解析路径（支持相对路径和绝对路径）
         ckpt_path = Path(ckpt_pth)
+        if not ckpt_path.is_absolute():
+            # 如果是相对路径，尝试从当前工作目录解析
+            ckpt_path = Path(os.getcwd()) / ckpt_path
+            # 如果还是不存在，尝试从项目根目录解析
+            if not ckpt_path.exists():
+                # 尝试从常见的位置查找
+                possible_paths = [
+                    Path(ckpt_pth).resolve(),  # 相对于当前目录的绝对路径
+                    Path(os.getcwd()) / ckpt_pth,  # 相对于当前工作目录
+                ]
+                for pp in possible_paths:
+                    if pp.exists():
+                        ckpt_path = pp
+                        break
+        
+        # 检查路径是否存在
+        if not ckpt_path.exists():
+            raise FileNotFoundError(
+                f"Checkpoint path does not exist: {ckpt_pth}\n"
+                f"Resolved path: {ckpt_path}\n"
+                f"Current working directory: {os.getcwd()}\n"
+                f"Please check the path in config file."
+            )
         
         # 检查是否是 DeepSpeed checkpoint 格式（目录）
         if ckpt_path.is_dir():
@@ -262,13 +287,19 @@ def videomae_classifier_small_patch16_224(
                     p = torch.load(model_states_file, map_location="cpu")
                     od = p.get("module", p.get("model", p))
                 else:
-                    raise FileNotFoundError(f"Model states file not found: {model_states_file}")
+                    raise FileNotFoundError(
+                        f"Model states file not found: {model_states_file}\n"
+                        f"Expected DeepSpeed checkpoint structure: {ckpt_path}/checkpoint/mp_rank_00_model_states.pt"
+                    )
             else:
-                raise FileNotFoundError(f"Checkpoint directory not found: {checkpoint_dir}")
-        else:
+                raise FileNotFoundError(
+                    f"Checkpoint directory not found: {checkpoint_dir}\n"
+                    f"Expected DeepSpeed checkpoint structure: {ckpt_path}/checkpoint/"
+                )
+        elif ckpt_path.is_file():
             # 标准 PyTorch Lightning checkpoint 格式（.ckpt 文件）
             logger.info(f"Loading standard checkpoint from: {ckpt_pth}")
-            p = torch.load(ckpt_pth, map_location="cpu")
+            p = torch.load(ckpt_path, map_location="cpu")
             # 尝试不同的键名
             if "state_dict" in p:
                 od = p["state_dict"]
@@ -278,6 +309,8 @@ def videomae_classifier_small_patch16_224(
                 od = p["model"]
             else:
                 od = p
+        else:
+            raise ValueError(f"Checkpoint path is neither a file nor a directory: {ckpt_path}")
         
         pretrained_dict = {}
         for k, v in od.items():

@@ -3,11 +3,9 @@ model: videomae_classifier_small_patch16_224
 # ⚠️ DeepSpeed checkpoint 格式：路径指向 checkpoint 目录（例如：epoch=49-loss=0.6095），不是文件
 # 代码会自动查找目录内的 checkpoint/mp_rank_00_model_states.pt
 ckpt_path: [
-  ./output/2026-01-09/15-29-49/pretrain_rgb/checkpoints/epoch=49-loss=0.6095,  # RGB checkpoint (DeepSpeed 格式)
-  # 请替换为实际的 Flow checkpoint 路径，例如：
-  # ./output/2026-01-09/XX-XX-XX/pretrain_flow/checkpoints/epoch=XX-loss=X.XXXX,
-  # 请替换为实际的 Skeleton checkpoint 路径，例如：
-  # ./output/2026-01-09/XX-XX-XX/pretrain_skeleton/checkpoints/epoch=XX-loss=X.XXXX,
+  /mnt/ssd2/lingyu/Tennis/output/2026-01-09/15-29-49/pretrain_rgb/checkpoints/epoch=49-loss=0.6095,  # RGB checkpoint (DeepSpeed 格式)
+  /mnt/ssd2/lingyu/Tennis/output/2026-01-08/15-55-27/pretrain_flow/checkpoints/epoch=49-loss=0.9503,  # Flow checkpoint
+  /mnt/ssd2/lingyu/Tennis/output/2026-01-09/11-16-02/pretrain_skeleton/checkpoints/epoch=49-loss=0.0141,  # Skeleton checkpoint
 ]
 in_chans: [3, 2, 17]  # RGB, Flow, Skeleton
 use_mean_pooling: True
