@@ -222,41 +222,71 @@ class DataAugmentationForVideoMAEMM(object):
 
 
 class DataAugmentationForUnlabelMM(object):
-    def __init__(self, cfg, mean, std):
+    def __init__(self, cfg, mean, std, mode=None):
         self.cfg = cfg
         # self.mean = mean
         # self.std = std
 
-        # 从配置中读取 input_size，如果没有则使用默认值
-        # 对于 skeleton 模态，应该与 RGB/Flow 保持一致 [224, 384] 以保持位置对应
-        modality_mode = cfg.data_module.modality.mode
-        if modality_mode == "skeleton":
-            # Skeleton 模态应该使用 [224, 384] 以与 RGB/Flow 位置对应
-            # 但优先使用配置文件中的值
-            if hasattr(cfg.data_module.modality, 'input_size'):
-                input_size = cfg.data_module.modality.input_size
-                if isinstance(input_size, (list, tuple)) and len(input_size) == 2:
-                    self.input_size = list(input_size)
-                elif isinstance(input_size, int):
-                    self.input_size = [input_size, input_size]
-                else:
-                    self.input_size = [224, 384]  # 默认宽屏格式
+        # 确定模态类型：支持两种配置格式
+        # 1. 单模态配置：cfg.data_module.modality.mode (用于预训练)
+        # 2. 多模态配置：cfg.data_module.mode 是列表 (用于多模态蒸馏)
+        if mode is not None:
+            # 如果显式传入 mode 参数，使用它
+            modality_mode = mode
+        elif hasattr(cfg, 'data_module') and hasattr(cfg.data_module, 'modality') and hasattr(cfg.data_module.modality, 'mode'):
+            # 单模态配置格式
+            modality_mode = cfg.data_module.modality.mode
+        elif hasattr(cfg, 'data_module') and hasattr(cfg.data_module, 'mode'):
+            # 多模态配置格式：mode 是列表，需要根据 mean/std 的长度推断
+            # mean 和 std 的长度对应模态索引：0=RGB, 1=flow, 2=skeleton
+            if isinstance(cfg.data_module.mode, list):
+                # 根据 mean 的长度推断模态（但这里 mean 是传入的参数，不是列表）
+                # 实际上，我们应该通过其他方式推断，或者要求传入 mode
+                # 暂时使用默认值
+                modality_mode = "flow"  # 默认，但应该通过参数传入
             else:
-                self.input_size = [224, 384]  # 默认宽屏格式
-            logger.info(f"[AUGMENTATION] Skeleton modality detected, using input_size: {self.input_size}")
-        elif hasattr(cfg.data_module.modality, 'input_size'):
+                modality_mode = cfg.data_module.mode
+        else:
+            # 无法确定，使用默认值
+            modality_mode = "flow"
+            logger.warning(f"[AUGMENTATION] Cannot determine modality mode, using default: {modality_mode}")
+
+        # 从配置中读取 input_size
+        # 对于多模态配置，input_size 是列表，需要根据模态索引选择
+        if hasattr(cfg, 'data_module') and hasattr(cfg.data_module, 'modality') and hasattr(cfg.data_module.modality, 'input_size'):
+            # 单模态配置格式
             input_size = cfg.data_module.modality.input_size
-            logger.debug(f"[AUGMENTATION] Raw input_size from config: {input_size}, type: {type(input_size)}")
+        elif hasattr(cfg, 'data_module') and hasattr(cfg.data_module, 'input_size'):
+            # 多模态配置格式：input_size 是列表 [[224, 384], [224, 384], [224, 384]]
+            if isinstance(cfg.data_module.input_size, list) and len(cfg.data_module.input_size) > 0:
+                # 根据 mode 推断索引：0=RGB, 1=flow, 2=skeleton
+                if modality_mode == "flow":
+                    input_size = cfg.data_module.input_size[1] if len(cfg.data_module.input_size) > 1 else cfg.data_module.input_size[0]
+                elif modality_mode == "skeleton":
+                    input_size = cfg.data_module.input_size[2] if len(cfg.data_module.input_size) > 2 else cfg.data_module.input_size[0]
+                elif modality_mode == "rgb":
+                    input_size = cfg.data_module.input_size[0]
+                else:
+                    input_size = cfg.data_module.input_size[0]
+            else:
+                input_size = cfg.data_module.input_size
+        else:
+            input_size = None
+
+        # 处理 input_size
+        if input_size is not None:
             if isinstance(input_size, (list, tuple)) and len(input_size) == 2:
                 self.input_size = list(input_size)
             elif isinstance(input_size, int):
                 self.input_size = [input_size, input_size]
             else:
-                logger.warning(f"[AUGMENTATION] Unexpected input_size type: {type(input_size)}, using default [224, 384]")
                 self.input_size = [224, 384]  # 默认值
         else:
-            logger.warning(f"[AUGMENTATION] input_size not found in config, using default [224, 384]")
-            self.input_size = [224, 384]  # 默认值
+            # 根据模态设置默认值
+            if modality_mode == "skeleton":
+                self.input_size = [224, 384]  # Skeleton 应该与 RGB/Flow 保持一致
+            else:
+                self.input_size = [224, 384]  # 默认值
         
         logger.info(f"[AUGMENTATION] DataAugmentationForUnlabelMM initialized with input_size: {self.input_size}, modality: {modality_mode}")
         

@@ -36,10 +36,10 @@ class TennisUnlabelCombinedMMDataModule(pl.LightningDataModule):
         self.mask_gen = MaskGeneration(cfg.data_module)
         self.transform_train_rgb = DataAugmentationForUnlabelRGB(cfg.data_module)
         self.transform_train_flow = DataAugmentationForUnlabelMM(
-            cfg.data_module, mean=cfg.data_module.mean[1], std=cfg.data_module.std[1]
+            cfg.data_module, mean=cfg.data_module.mean[1], std=cfg.data_module.std[1], mode="flow"
         )
         self.transform_train_skeleton = DataAugmentationForUnlabelMM(
-            cfg.data_module, mean=cfg.data_module.mean[2], std=cfg.data_module.std[2]
+            cfg.data_module, mean=cfg.data_module.mean[2], std=cfg.data_module.std[2], mode="skeleton"
         )
         
         self.transform_train = [
