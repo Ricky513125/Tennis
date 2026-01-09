@@ -247,21 +247,67 @@ def videomae_classifier_small_patch16_224(
         **kwargs,
     )
     if ckpt_pth is not None:
-        p = torch.load(ckpt_pth)
-        od = p["module"]
+        from pathlib import Path
+        
+        ckpt_path = Path(ckpt_pth)
+        
+        # 检查是否是 DeepSpeed checkpoint 格式（目录）
+        if ckpt_path.is_dir():
+            # DeepSpeed checkpoint: 目录包含 checkpoint/mp_rank_00_model_states.pt
+            checkpoint_dir = ckpt_path / "checkpoint"
+            if checkpoint_dir.exists():
+                model_states_file = checkpoint_dir / "mp_rank_00_model_states.pt"
+                if model_states_file.exists():
+                    logger.info(f"Loading DeepSpeed checkpoint from: {model_states_file}")
+                    p = torch.load(model_states_file, map_location="cpu")
+                    od = p.get("module", p.get("model", p))
+                else:
+                    raise FileNotFoundError(f"Model states file not found: {model_states_file}")
+            else:
+                raise FileNotFoundError(f"Checkpoint directory not found: {checkpoint_dir}")
+        else:
+            # 标准 PyTorch Lightning checkpoint 格式（.ckpt 文件）
+            logger.info(f"Loading standard checkpoint from: {ckpt_pth}")
+            p = torch.load(ckpt_pth, map_location="cpu")
+            # 尝试不同的键名
+            if "state_dict" in p:
+                od = p["state_dict"]
+            elif "module" in p:
+                od = p["module"]
+            elif "model" in p:
+                od = p["model"]
+            else:
+                od = p
+        
         pretrained_dict = {}
         for k, v in od.items():
+            # 处理不同的键名格式
+            new_key = k
             if "model." in k and "encoder." in k:
-                k = k.replace("_forward_module.model.", "")
-                pretrained_dict[k] = v
+                new_key = k.replace("_forward_module.model.", "")
+                new_key = new_key.replace("model.", "")
+                pretrained_dict[new_key] = v
             elif "student_rgb." in k and "encoder." in k:
-                k = k.replace("_forward_module.student_rgb.", "")
-                pretrained_dict[k] = v
-        # print(pretrained_dict.keys())
+                new_key = k.replace("_forward_module.student_rgb.", "")
+                new_key = new_key.replace("student_rgb.", "")
+                pretrained_dict[new_key] = v
+            elif "encoder." in k:
+                # 直接包含 encoder 的键
+                new_key = k.replace("_forward_module.", "")
+                if new_key.startswith("encoder."):
+                    pretrained_dict[new_key] = v
+        
+        # 过滤并加载权重
         model_dict = model.state_dict()
-        model_dict.update(pretrained_dict)
-        model.load_state_dict(model_dict)
-        logger.info(f"Model is initialized from {ckpt_pth}")
+        filtered_dict = {}
+        for k, v in pretrained_dict.items():
+            if k in model_dict and v.shape == model_dict[k].shape:
+                filtered_dict[k] = v
+        
+        model_dict.update(filtered_dict)
+        model.load_state_dict(model_dict, strict=False)
+        logger.info(f"Model initialized from {ckpt_pth}")
+        logger.info(f"Loaded {len(filtered_dict)} / {len(pretrained_dict)} encoder parameters")
     else:
         raise Exception("2nd phase training is running from scratch!")
     return model

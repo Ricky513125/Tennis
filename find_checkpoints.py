@@ -31,20 +31,38 @@ def find_checkpoints(base_dir="./output"):
             if "pretrain_rgb" in time_dir.name:
                 ckpt_dir = time_dir / "checkpoints"
                 if ckpt_dir.exists():
-                    for ckpt_file in ckpt_dir.glob("*.ckpt"):
-                        checkpoints["rgb"].append(str(ckpt_file))
+                    # 查找 DeepSpeed checkpoint 目录（格式：epoch=XX-loss=X.XXXX）
+                    for ckpt_item in ckpt_dir.iterdir():
+                        if ckpt_item.is_dir() and "epoch=" in ckpt_item.name:
+                            # 检查是否有 checkpoint/mp_rank_00_model_states.pt
+                            model_states = ckpt_item / "checkpoint" / "mp_rank_00_model_states.pt"
+                            if model_states.exists():
+                                checkpoints["rgb"].append(str(ckpt_item))
+                        elif ckpt_item.is_file() and ckpt_item.suffix == ".ckpt":
+                            # 标准 PyTorch Lightning checkpoint
+                            checkpoints["rgb"].append(str(ckpt_item))
             
             elif "pretrain_flow" in time_dir.name:
                 ckpt_dir = time_dir / "checkpoints"
                 if ckpt_dir.exists():
-                    for ckpt_file in ckpt_dir.glob("*.ckpt"):
-                        checkpoints["flow"].append(str(ckpt_file))
+                    for ckpt_item in ckpt_dir.iterdir():
+                        if ckpt_item.is_dir() and "epoch=" in ckpt_item.name:
+                            model_states = ckpt_item / "checkpoint" / "mp_rank_00_model_states.pt"
+                            if model_states.exists():
+                                checkpoints["flow"].append(str(ckpt_item))
+                        elif ckpt_item.is_file() and ckpt_item.suffix == ".ckpt":
+                            checkpoints["flow"].append(str(ckpt_item))
             
             elif "pretrain_skeleton" in time_dir.name:
                 ckpt_dir = time_dir / "checkpoints"
                 if ckpt_dir.exists():
-                    for ckpt_file in ckpt_dir.glob("*.ckpt"):
-                        checkpoints["skeleton"].append(str(ckpt_file))
+                    for ckpt_item in ckpt_dir.iterdir():
+                        if ckpt_item.is_dir() and "epoch=" in ckpt_item.name:
+                            model_states = ckpt_item / "checkpoint" / "mp_rank_00_model_states.pt"
+                            if model_states.exists():
+                                checkpoints["skeleton"].append(str(ckpt_item))
+                        elif ckpt_item.is_file() and ckpt_item.suffix == ".ckpt":
+                            checkpoints["skeleton"].append(str(ckpt_item))
     
     # 打印结果
     print("=" * 80)
