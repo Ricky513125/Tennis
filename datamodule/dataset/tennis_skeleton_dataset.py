@@ -203,8 +203,11 @@ class TennisSkeletonDataset(torch.utils.data.Dataset):
         skeleton_tensor = skeleton_tensor.permute(0, 2, 3, 1)  # [T, H, W, K]
         skeleton_tensor = self.transform.weak_aug(skeleton_tensor)
         
+        # weak_aug 输出是 [T, C, H, W]，需要转换回 [T, H, W, C] 用于后续处理
+        skeleton_tensor = skeleton_tensor.permute(0, 2, 3, 1)  # [T, C, H, W] -> [T, H, W, C]
+        
         # 生成 mask
-        T, H, W, K = skeleton_tensor.shape
+        T, H, W, C = skeleton_tensor.shape
         mask = self._generate_mask(H, W, T)
         
         return skeleton_tensor, mask

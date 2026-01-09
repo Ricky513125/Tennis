@@ -86,7 +86,19 @@ class VideoMAETrainer(pl.LightningModule):
         bool_masked_pos = input["mask"].flatten(1).to(torch.bool)  # [B, seq_length]
 
         # 输入: [B, T, H, W, C]
+        # 检查输入形状
+        if len(unlabel_frames.shape) != 5:
+            raise ValueError(f"Expected unlabel_frames to be 5D [B, T, H, W, C], got shape {unlabel_frames.shape}")
+        
         B, T, H, W, C = unlabel_frames.shape
+        
+        # 验证通道数是否匹配配置
+        expected_channels = len(self.cfg.data_module.modality.mean)
+        if C != expected_channels:
+            raise ValueError(
+                f"Channel mismatch: unlabel_frames has {C} channels, but config expects {expected_channels} "
+                f"(modality: {self.cfg.data_module.modality.mode})"
+            )
         
         # 计算序列长度
         seq_length = (H // self.patch_size) * (W // self.patch_size) * (T // 2)
@@ -104,6 +116,13 @@ class VideoMAETrainer(pl.LightningModule):
         with torch.no_grad():
             # 先转换为 [B, C, T, H, W] 格式
             unlabel_frames = unlabel_frames.permute(0, 4, 1, 2, 3)  # [B, T, H, W, C] -> [B, C, T, H, W]
+            
+            # 验证转换后的形状
+            B_after, C_after, T_after, H_after, W_after = unlabel_frames.shape
+            if C_after != expected_channels:
+                raise ValueError(
+                    f"After permute, channel mismatch: got {C_after} channels, expected {expected_channels}"
+                )
             
             # 计算均值和标准差
             if self.cfg.data_module.modality.mode == "RGB":
