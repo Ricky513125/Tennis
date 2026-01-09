@@ -130,9 +130,10 @@ class PretrainVisionTransformerEncoder(nn.Module):
         )
 
     def forward_features(self, x, mask=None):
+        print(f"[MODEL] Input to forward_features - x shape: {x.shape}")
         _, _, T, _, _ = x.shape
         x = self.patch_embed(x)
-
+        print(f"[MODEL] After patch_embed - x shape: {x.shape}, pos_embed shape: {self.pos_embed.shape}")
         x = x + self.pos_embed.type_as(x).to(x.device).clone().detach()
 
         B, num_patches, C = x.shape
@@ -424,6 +425,13 @@ class PretrainVisionTransformer(nn.Module):
         self.temporal_length = num_frames // 2
         self.spatial_patches = self.grid_size[0] * self.grid_size[1]
         self.seq_length = self.temporal_length * self.spatial_patches
+        
+        # 打印模型初始化信息
+        print(f"[MODEL INIT] img_size: {img_size}, patch_size: {patch_size}, num_frames: {num_frames}")
+        print(f"[MODEL INIT] grid_size: {self.grid_size}, spatial_patches: {self.spatial_patches}, temporal_length: {self.temporal_length}")
+        print(f"[MODEL INIT] seq_length: {self.seq_length}, encoder num_patches: {self.encoder.patch_embed.num_patches}")
+        if hasattr(self.encoder, 'pos_embed') and self.encoder.pos_embed is not None:
+            print(f"[MODEL INIT] encoder pos_embed shape: {self.encoder.pos_embed.shape}")
 
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):

@@ -33,6 +33,8 @@ def get_model(cfg, ckpt_pth=None, input_size=224, patch_size=16, in_chans=None):
         else:
             raise Exception(f"{cfg.data_module.modality.mode} is not supported!")
 
+        print(f"[GET_MODEL] Creating model with img_size: {cfg.data_module.modality.input_size}, patch_size: {cfg.data_module.modality.patch_size[0]}")
+        print(f"[GET_MODEL] encoder_in_chans: {cfg.trainer.modality.in_chans}, decoder_num_classes: {cfg.trainer.modality.decoder_num_classes}")
         model = func(
             ckpt_pth=cfg.trainer.pretrain,
             img_size=cfg.data_module.modality.input_size,
@@ -40,6 +42,7 @@ def get_model(cfg, ckpt_pth=None, input_size=224, patch_size=16, in_chans=None):
             encoder_in_chans=cfg.trainer.modality.in_chans,  # 使用 encoder_in_chans 而不是 in_chans
             decoder_num_classes=cfg.trainer.modality.decoder_num_classes,
         )
+        print(f"[GET_MODEL] encoder_in_chans: {cfg.trainer.modality.in_chans}, decoder_num_classes: {cfg.trainer.modality.decoder_num_classes}")
 
     # if cfg.trainer.model.split("_")[0] == "pretrain":
     #     scale = cfg.trainer.model.split("_")[2]
