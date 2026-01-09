@@ -279,17 +279,44 @@ class DataAugmentationForUnlabelMM(object):
         return frames_tensor
 
     def _construct_weak_aug(self):
+        # 确保 input_size 是元组格式，用于 resize
+        input_size_tuple = tuple(self.input_size) if isinstance(self.input_size, (list, tuple)) else (self.input_size, self.input_size)
+        
+        def resize_frames(x):
+            """
+            x: [T, C, H, W]
+            返回: [T, C, H_out, W_out]
+            """
+            T, C, H, W = x.shape
+            # 检查是否需要 resize
+            if (H, W) == tuple(self.input_size):
+                return x
+            
+            # 对每一帧进行 resize
+            resized_frames = []
+            for t in range(T):
+                frame = x[t]  # [C, H, W]
+                # resize 需要 [N, C, H, W] 格式，所以添加 batch 维度
+                frame_batch = frame.unsqueeze(0)  # [1, C, H, W]
+                # resize 到目标尺寸
+                frame_resized = torch.nn.functional.interpolate(
+                    frame_batch,
+                    size=input_size_tuple,  # (H, W)
+                    mode='bilinear',
+                    align_corners=False,
+                    antialias=True
+                )  # [1, C, H_out, W_out]
+                resized_frames.append(frame_resized.squeeze(0))  # [C, H_out, W_out]
+            
+            return torch.stack(resized_frames, dim=0)  # [T, C, H_out, W_out]
+        
         self.weak_aug = transforms.Compose(
             [
                 # 输入格式: [T, H, W, C]
                 # 第一步: 转换为 [T, C, H, W]
                 transforms.Lambda(lambda x: x.permute(0, 3, 1, 2) if x.dim() == 4 and x.shape[-1] in [2, 3, 17, 21] else x),
                 # 第二步: 调整每帧的尺寸（如果需要）
-                # 如果已经是目标尺寸，跳过 resize
-                transforms.Lambda(lambda x: torch.stack([
-                    transforms.functional.resize(frame.unsqueeze(0), self.input_size)  # [1, C, H, W]
-                    for frame in x
-                ]).squeeze(1) if x.shape[2:] != torch.Size(self.input_size) else x),  # 结果形状 [T, C, H, W]
+                transforms.Lambda(resize_frames),  # [T, C, H, W] -> [T, C, H_out, W_out]
                 # 第三步: 归一化
                 # x 形状: [T, C, H, W], mean/std 形状: [1, C, 1, 1]
                 transforms.Lambda(lambda x: (x - self.mean) / self.std),
