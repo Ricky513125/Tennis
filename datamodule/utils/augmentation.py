@@ -1,6 +1,7 @@
 import logging
 from torchvision import transforms
 import torch
+from PIL import Image as PILImage
 from datamodule.utils.masking_generator import (
     RandomMaskingGenerator,
     TubeMaskingGenerator,
@@ -176,7 +177,7 @@ class DataAugmentationForUnlabelRGB(object):
                     cropped_frame = self.crop(frame_pil)
                     # 如果目标尺寸不是正方形，需要 resize
                     if self.target_size[0] != self.target_size[1]:
-                        cropped_frame = cropped_frame.resize(self.target_size[::-1], Image.BILINEAR)  # PIL 使用 (W, H)
+                        cropped_frame = cropped_frame.resize(self.target_size[::-1], PILImage.BILINEAR)  # PIL 使用 (W, H)
                     cropped_frames.append(transforms.ToTensor()(cropped_frame))
                 return torch.stack(cropped_frames, dim=0)  # [T, C, H, W]
         
