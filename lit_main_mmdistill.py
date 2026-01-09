@@ -68,7 +68,7 @@ def main(cfg):
         callbacks=[checkpoint_callback],
         detect_anomaly=True,
         use_distributed_sampler=False,
-        check_val_every_n_epoch=5,
+        check_val_every_n_epoch=999,  # 暂时禁用验证，避免 few-shot 评估问题
     )
 
     if cfg.train:

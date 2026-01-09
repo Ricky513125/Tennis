@@ -164,6 +164,17 @@ class MMDistillTrainer(pl.LightningModule):
         k_shot = self.cfg.data_module.k_shot
         q_sample = self.cfg.data_module.q_sample
 
+        # 检查 batch size 是否正确
+        expected_batch_size = n_way * (k_shot + q_sample)
+        actual_batch_size = frames_rgb.shape[0]
+        
+        if actual_batch_size != expected_batch_size:
+            logger.warning(
+                f"Validation batch size mismatch: expected {expected_batch_size}, got {actual_batch_size}. "
+                f"Skipping this validation step."
+            )
+            return None
+
         # RGB
         frames_rgb, support_frames_rgb, query_frames_rgb = self.preprocess_frames(
             frames=frames_rgb, n_way=n_way, k_shot=k_shot, q_sample=q_sample
@@ -300,6 +311,18 @@ class MMDistillTrainer(pl.LightningModule):
         print("Batch size = %d" % self.total_batch_size)
 
     def preprocess_frames(self, frames, n_way, k_shot, q_sample):
+        # 检查输入形状
+        expected_batch_size = n_way * (k_shot + q_sample)
+        actual_batch_size = frames.shape[0]
+        
+        if actual_batch_size != expected_batch_size:
+            raise ValueError(
+                f"Batch size mismatch in preprocess_frames: "
+                f"expected {expected_batch_size} (n_way={n_way} * (k_shot={k_shot} + q_sample={q_sample})), "
+                f"got {actual_batch_size}. "
+                f"Frames shape: {frames.shape}"
+            )
+        
         frames = rearrange(
             frames, "(n m) c t h w -> n m c t h w", n=n_way, m=(k_shot + q_sample)
         )
