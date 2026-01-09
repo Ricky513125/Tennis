@@ -232,10 +232,10 @@ class DataAugmentationForUnlabelMM(object):
         # 2. 多模态配置：cfg.data_module.mode 是列表 (用于多模态蒸馏)
         if mode is not None:
             # 如果显式传入 mode 参数，使用它
-            modality_mode = mode
+            self.modality_mode = mode
         elif hasattr(cfg, 'data_module') and hasattr(cfg.data_module, 'modality') and hasattr(cfg.data_module.modality, 'mode'):
             # 单模态配置格式
-            modality_mode = cfg.data_module.modality.mode
+            self.modality_mode = cfg.data_module.modality.mode
         elif hasattr(cfg, 'data_module') and hasattr(cfg.data_module, 'mode'):
             # 多模态配置格式：mode 是列表，需要根据 mean/std 的长度推断
             # mean 和 std 的长度对应模态索引：0=RGB, 1=flow, 2=skeleton
@@ -243,13 +243,13 @@ class DataAugmentationForUnlabelMM(object):
                 # 根据 mean 的长度推断模态（但这里 mean 是传入的参数，不是列表）
                 # 实际上，我们应该通过其他方式推断，或者要求传入 mode
                 # 暂时使用默认值
-                modality_mode = "flow"  # 默认，但应该通过参数传入
+                self.modality_mode = "flow"  # 默认，但应该通过参数传入
             else:
-                modality_mode = cfg.data_module.mode
+                self.modality_mode = cfg.data_module.mode
         else:
             # 无法确定，使用默认值
-            modality_mode = "flow"
-            logger.warning(f"[AUGMENTATION] Cannot determine modality mode, using default: {modality_mode}")
+            self.modality_mode = "flow"
+            logger.warning(f"[AUGMENTATION] Cannot determine modality mode, using default: {self.modality_mode}")
 
         # 从配置中读取 input_size
         # 对于多模态配置，input_size 是列表，需要根据模态索引选择
@@ -260,11 +260,11 @@ class DataAugmentationForUnlabelMM(object):
             # 多模态配置格式：input_size 是列表 [[224, 384], [224, 384], [224, 384]]
             if isinstance(cfg.data_module.input_size, list) and len(cfg.data_module.input_size) > 0:
                 # 根据 mode 推断索引：0=RGB, 1=flow, 2=skeleton
-                if modality_mode == "flow":
+                if self.modality_mode == "flow":
                     input_size = cfg.data_module.input_size[1] if len(cfg.data_module.input_size) > 1 else cfg.data_module.input_size[0]
-                elif modality_mode == "skeleton":
+                elif self.modality_mode == "skeleton":
                     input_size = cfg.data_module.input_size[2] if len(cfg.data_module.input_size) > 2 else cfg.data_module.input_size[0]
-                elif modality_mode == "rgb":
+                elif self.modality_mode == "rgb":
                     input_size = cfg.data_module.input_size[0]
                 else:
                     input_size = cfg.data_module.input_size[0]
@@ -283,12 +283,12 @@ class DataAugmentationForUnlabelMM(object):
                 self.input_size = [224, 384]  # 默认值
         else:
             # 根据模态设置默认值
-            if modality_mode == "skeleton":
+            if self.modality_mode == "skeleton":
                 self.input_size = [224, 384]  # Skeleton 应该与 RGB/Flow 保持一致
             else:
                 self.input_size = [224, 384]  # 默认值
         
-        logger.info(f"[AUGMENTATION] DataAugmentationForUnlabelMM initialized with input_size: {self.input_size}, modality: {modality_mode}")
+        logger.info(f"[AUGMENTATION] DataAugmentationForUnlabelMM initialized with input_size: {self.input_size}, modality: {self.modality_mode}")
         
         # self.mean = torch.tensor(mean).view(-1, 1, 1)  # 形状 [2, 1, 1]
         # self.std = torch.tensor(std).view(-1, 1, 1)  # 形状 [2, 1, 1]
@@ -343,7 +343,7 @@ class DataAugmentationForUnlabelMM(object):
             """
             T, C, H, W = x.shape
             target_H, target_W = self.input_size
-            logger.info(f"[RESIZE] Input shape: {x.shape}, target input_size: {self.input_size}, modality: {modality_mode}")
+            logger.info(f"[RESIZE] Input shape: {x.shape}, target input_size: {self.input_size}, modality: {self.modality_mode}")
             # 检查是否需要 resize
             if (H, W) == (target_H, target_W):
                 logger.debug(f"[RESIZE] No resize needed, already at target size")
@@ -385,7 +385,7 @@ class DataAugmentationForUnlabelMM(object):
         )
         
         # 添加验证：确保 weak_aug 输出正确的尺寸
-        logger.info(f"[AUGMENTATION] weak_aug constructed for modality {modality_mode}, target input_size: {self.input_size}")
+        logger.info(f"[AUGMENTATION] weak_aug constructed for modality {self.modality_mode}, target input_size: {self.input_size}")
 
     def _construct_strong_aug(self):
         self.strong_aug = transforms.Compose(
