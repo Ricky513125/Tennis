@@ -50,4 +50,4 @@ num_classes_action: 204  # Ego4D action classes (not used in unlabel-only mode)
 n_way: 5
 k_shot: 5
 q_sample: 15
-episodes: 600
+episodes: 250  # 调整为 250，小于可创建的最大值 271，留一些余量
