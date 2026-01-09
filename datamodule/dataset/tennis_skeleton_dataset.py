@@ -209,7 +209,8 @@ class TennisSkeletonDataset(torch.utils.data.Dataset):
         # 生成 mask
         T, H, W, C = skeleton_tensor.shape
         mask = self._generate_mask(H, W, T)
-        
+        # 在 return skeleton_tensor, mask 之前添加
+        logger.debug(f"[SKELETON DATASET] After transform - skeleton_tensor shape: {skeleton_tensor.shape}, mask shape: {mask.shape}")
         return skeleton_tensor, mask
 
     def __getitem__(self, index):

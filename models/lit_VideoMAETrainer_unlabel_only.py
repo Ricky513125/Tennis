@@ -91,7 +91,9 @@ class VideoMAETrainer(pl.LightningModule):
             raise ValueError(f"Expected unlabel_frames to be 5D [B, T, H, W, C], got shape {unlabel_frames.shape}")
         
         B, T, H, W, C = unlabel_frames.shape
-        
+        # 在 B, T, H, W, C = unlabel_frames.shape 之后添加
+        logger.debug(f"[TRAINING STEP] unlabel_frames shape: {unlabel_frames.shape}, config input_size: {self.cfg.data_module.modality.input_size}")
+        logger.debug(f"[TRAINING STEP] After permute to [B, C, T, H, W] - will be: [{B}, {C}, {T}, {H}, {W}]")
         # 验证通道数是否匹配配置
         expected_channels = len(self.cfg.data_module.modality.mean)
         if C != expected_channels:

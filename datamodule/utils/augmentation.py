@@ -1,3 +1,4 @@
+import logging
 from torchvision import transforms
 import torch
 from datamodule.utils.masking_generator import (
@@ -12,6 +13,8 @@ from datamodule.utils.transform import (
     ToTensor,
     ToTorchFormatTensor,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class DataAugmentationForVideoMAERGB(object):
@@ -236,6 +239,8 @@ class DataAugmentationForUnlabelMM(object):
         else:
             self.input_size = [224, 384]  # 默认值
         
+        logger.info(f"[AUGMENTATION] DataAugmentationForUnlabelMM initialized with input_size: {self.input_size}, modality: {cfg.data_module.modality.mode}")
+        
         # self.mean = torch.tensor(mean).view(-1, 1, 1)  # 形状 [2, 1, 1]
         # self.std = torch.tensor(std).view(-1, 1, 1)  # 形状 [2, 1, 1]
 
@@ -288,8 +293,10 @@ class DataAugmentationForUnlabelMM(object):
             返回: [T, C, H_out, W_out]
             """
             T, C, H, W = x.shape
+            logger.debug(f"[RESIZE] Input shape: {x.shape}, target input_size: {self.input_size}, input_size_tuple: {input_size_tuple}")
             # 检查是否需要 resize
             if (H, W) == tuple(self.input_size):
+                logger.debug(f"[RESIZE] No resize needed, already at target size")
                 return x
             
             # 对每一帧进行 resize
@@ -308,7 +315,9 @@ class DataAugmentationForUnlabelMM(object):
                 )  # [1, C, H_out, W_out]
                 resized_frames.append(frame_resized.squeeze(0))  # [C, H_out, W_out]
             
-            return torch.stack(resized_frames, dim=0)  # [T, C, H_out, W_out]
+            result = torch.stack(resized_frames, dim=0)  # [T, C, H_out, W_out]
+            logger.debug(f"[RESIZE] Output shape: {result.shape}")
+            return result
         
         self.weak_aug = transforms.Compose(
             [
