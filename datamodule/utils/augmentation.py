@@ -224,8 +224,18 @@ class DataAugmentationForUnlabelMM(object):
         # self.mean = mean
         # self.std = std
 
-        # 元宝修改
-        self.input_size = [224, 384]
+        # 从配置中读取 input_size，如果没有则使用默认值
+        if hasattr(cfg.data_module.modality, 'input_size'):
+            input_size = cfg.data_module.modality.input_size
+            if isinstance(input_size, (list, tuple)) and len(input_size) == 2:
+                self.input_size = list(input_size)
+            elif isinstance(input_size, int):
+                self.input_size = [input_size, input_size]
+            else:
+                self.input_size = [224, 384]  # 默认值
+        else:
+            self.input_size = [224, 384]  # 默认值
+        
         # self.mean = torch.tensor(mean).view(-1, 1, 1)  # 形状 [2, 1, 1]
         # self.std = torch.tensor(std).view(-1, 1, 1)  # 形状 [2, 1, 1]
 
