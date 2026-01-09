@@ -10,11 +10,12 @@ import json
 import random
 
 
-def keypoints_to_heatmap(keypoints, H=56, W=56, sigma=2.0):
+def keypoints_to_heatmap(keypoints, H=56, W=98, sigma=2.0):
     """
     将关键点转换为热图
     keypoints: [K, 3] (x_norm, y_norm, confidence)，坐标已归一化到 [0, 1]
     返回: [K, H, W] 热图
+    注意：使用宽屏格式 (H=56, W=98) 以保持宽高比，匹配最终尺寸 [224, 384]
     """
     K = keypoints.shape[0]
     heatmap = np.zeros((K, H, W), dtype=np.float32)
@@ -171,32 +172,33 @@ def calculate_statistics(pkl_files, skeleton_dir, unlabel_json_path, sample_size
                     continue
                 
                 # 转换为热图 [K, H, W]
-                heatmap = keypoints_to_heatmap(keypoints, H=56, W=56, sigma=2.0)
+                # 使用宽屏格式以保持宽高比：56×98 (宽高比 ≈ 1:1.75，匹配 224×384)
+                heatmap = keypoints_to_heatmap(keypoints, H=56, W=98, sigma=2.0)
                 
-                # Resize 到目标尺寸 [224, 224]（使用双线性插值）
+                # Resize 到目标尺寸 [224, 384]（使用双线性插值）以与 RGB/Flow 位置对应
                 # 使用 PIL 或 numpy 进行 resize
-                if heatmap.shape[1] != 224 or heatmap.shape[2] != 224:
+                if heatmap.shape[1] != 224 or heatmap.shape[2] != 384:
                     # 使用 numpy 和简单的插值方法
                     # 或者使用 PIL（如果可用）
                     try:
                         from PIL import Image
                         # 对每个通道分别 resize
-                        resized_heatmap = np.zeros((heatmap.shape[0], 224, 224), dtype=np.float32)
+                        resized_heatmap = np.zeros((heatmap.shape[0], 224, 384), dtype=np.float32)
                         for k in range(heatmap.shape[0]):
                             img = Image.fromarray(heatmap[k])
-                            img_resized = img.resize((224, 224), Image.BILINEAR)
+                            img_resized = img.resize((384, 224), Image.BILINEAR)  # PIL resize 使用 (W, H)
                             resized_heatmap[k] = np.array(img_resized)
                         heatmap = resized_heatmap
                     except ImportError:
                         # 如果没有 PIL，使用简单的最近邻插值
                         # 计算缩放因子
                         scale_h = 224 / heatmap.shape[1]
-                        scale_w = 224 / heatmap.shape[2]
+                        scale_w = 384 / heatmap.shape[2]
                         # 创建新数组
-                        resized_heatmap = np.zeros((heatmap.shape[0], 224, 224), dtype=np.float32)
+                        resized_heatmap = np.zeros((heatmap.shape[0], 224, 384), dtype=np.float32)
                         for k in range(heatmap.shape[0]):
                             for i in range(224):
-                                for j in range(224):
+                                for j in range(384):
                                     src_i = int(i / scale_h)
                                     src_j = int(j / scale_w)
                                     resized_heatmap[k, i, j] = heatmap[k, src_i, src_j]

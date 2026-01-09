@@ -190,9 +190,14 @@ class TennisSkeletonDataset(torch.utils.data.Dataset):
         
         # 转换为热图格式 [T, K, H, W]
         # 这里我们转换为热图以便与 VideoMAE 兼容
+        # 注意：为了与 RGB/Flow 的位置对应，热图应该保持宽高比
+        # 原始图像通常是 720×1280，宽高比约 1:1.78
+        # 目标尺寸是 224×384，宽高比约 1:1.71，基本匹配
+        # 初始热图使用 56×98 以保持宽高比（56/98 ≈ 224/384）
         heatmap_frames = []
         for skeleton_frame in skeleton_frames:
-            heatmap = self._keypoints_to_heatmap(skeleton_frame, H=56, W=56)
+            # 使用宽屏格式的热图以保持宽高比：56×98 (宽高比 ≈ 1:1.75)
+            heatmap = self._keypoints_to_heatmap(skeleton_frame, H=56, W=98)
             heatmap_frames.append(heatmap)
         
         # 转换为张量 [T, K, H, W]

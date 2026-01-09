@@ -1,21 +1,34 @@
 # Skeleton modality configuration
 mode: skeleton
 patch_size: [16, 16]  # Patch size for VideoMAE
-input_size: [224, 224]  # Input size [H, W] (will be resized from 56x56 heatmap to 224x224)
+input_size: [224, 384]  # Input size [H, W] - 与 RGB/Flow 保持一致，确保位置对应
 
 # Mean and std for skeleton heatmaps (normalized)
 # Assuming heatmap format [K, H, W] where K=17 keypoints
 # We need mean and std for each keypoint channel
+# mean: [
+#     0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+#     0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+#     0.0, 0.0, 0.0
+# ]  # Mean for each keypoint channel (17 channels)
+# std: [
+#     1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+#     1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+#     1.0, 1.0, 1.0
+# ]  # Std for each keypoint channel (17 channels)
+
 mean: [
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0
-]  # Mean for each keypoint channel (17 channels)
+    0.005979, 0.006135, 0.006135, 0.005963, 0.005763, 0.005998, 0.005870,
+    0.005277, 0.005162, 0.004691, 0.004654, 0.005420, 0.005283, 0.005718,
+    0.005642, 0.005557, 0.005492
+]
 std: [
-    1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-    1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-    1.0, 1.0, 1.0
-]  # Std for each keypoint channel (17 channels)
+    0.047612, 0.048797, 0.048809, 0.047665, 0.046263, 0.047610, 0.046673,
+    0.042440, 0.041714, 0.038086, 0.037877, 0.042837, 0.041829, 0.045319,
+    0.044798, 0.044088, 0.043690
+]
+
+
 
 # Number of input channels (keypoints converted to heatmaps)
 # For skeleton: we convert keypoints to heatmaps, so in_chans = num_keypoints
