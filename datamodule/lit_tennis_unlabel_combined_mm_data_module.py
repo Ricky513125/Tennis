@@ -66,6 +66,18 @@ class TennisUnlabelCombinedMMDataModule(pl.LightningDataModule):
             self.train_dataset = TennisUnlabelCombinedMMDataset(
                 self.data_module_cfg, self.transform_train, self.mask_gen
             )
+            
+            # 打印训练集信息
+            train_size = len(self.train_dataset)
+            print("=" * 80)
+            print("📊 数据集统计信息")
+            print("=" * 80)
+            print(f"✅ 训练集 (Train Dataset):")
+            print(f"   - 总样本数: {train_size}")
+            if hasattr(self.train_dataset, 'unlabel_loader'):
+                if hasattr(self.train_dataset.unlabel_loader, '_dir_to_img_frame'):
+                    print(f"   - 视频/目录数: {len(self.train_dataset.unlabel_loader._dir_to_img_frame)}")
+            
             self.batch_sampler_train = BatchSampler(
                 sampler=DistributedSampler(
                     dataset=self.train_dataset,
@@ -83,6 +95,52 @@ class TennisUnlabelCombinedMMDataModule(pl.LightningDataModule):
                 self.data_module_cfg.num_frames,
                 "RGB",
             )
+            
+            # 打印验证集信息
+            val_size = len(self.val_dataset)
+            print(f"\n✅ 验证集 (Validation Dataset):")
+            print(f"   - 总样本数: {val_size}")
+            
+            # 统计每个 action 类别的样本数
+            if hasattr(self.val_dataset, '_action_idx') and hasattr(self.val_dataset, '_action_label'):
+                action_counts = {}
+                action_labels_map = {}
+                
+                # 统计每个 action_idx 的样本数
+                for i, action_idx in enumerate(self.val_dataset._action_idx):
+                    action_counts[action_idx] = action_counts.get(action_idx, 0) + 1
+                    # 记录每个 action_idx 对应的 label
+                    if action_idx not in action_labels_map:
+                        action_labels_map[action_idx] = self.val_dataset._action_label[i] if i < len(self.val_dataset._action_label) else "N/A"
+                
+                print(f"   - Action 类别数: {len(action_counts)}")
+                print(f"   - 每个类别的样本数:")
+                for action_idx, count in sorted(action_counts.items()):
+                    action_label = action_labels_map.get(action_idx, "N/A")
+                    print(f"     * Action {action_idx} ({action_label}): {count} 个样本")
+            
+            # 检查 few-shot 评估的可行性
+            expected_batch_size = self.n_way * (self.k_shot + self.q_sample)
+            print(f"\n📋 Few-shot 评估配置:")
+            print(f"   - N-way: {self.n_way}")
+            print(f"   - K-shot: {self.k_shot}")
+            print(f"   - Q-sample: {self.q_sample}")
+            print(f"   - 期望的 batch size: {expected_batch_size}")
+            print(f"   - Episodes: {self.episodes}")
+            
+            if val_size < expected_batch_size:
+                print(f"\n⚠️  警告: 验证集样本数 ({val_size}) 小于期望的 batch size ({expected_batch_size})")
+                print(f"   无法创建完整的 few-shot episode。")
+                print(f"   建议:")
+                print(f"   1. 增加验证数据集的大小")
+                print(f"   2. 或者减小 n_way, k_shot, q_sample 的值")
+            else:
+                max_episodes = val_size // expected_batch_size
+                print(f"   - 理论上可以创建的最大 episodes: {max_episodes}")
+                if self.episodes > max_episodes:
+                    print(f"   ⚠️  警告: 配置的 episodes ({self.episodes}) 大于可创建的最大值 ({max_episodes})")
+            
+            print("=" * 80)
             batch_sampler = BatchSampler(
                 sampler=DistributedSampler(
                     dataset=range(self.eval_batch_size * self.episodes),

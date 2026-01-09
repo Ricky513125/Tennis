@@ -136,7 +136,36 @@ class PretrainVisionTransformerEncoder(nn.Module):
         _, _, T, _, _ = x.shape
         x = self.patch_embed(x)
         logger.debug(f"[MODEL] After patch_embed - x shape: {x.shape}, pos_embed shape: {self.pos_embed.shape}")
-        x = x + self.pos_embed.type_as(x).to(x.device).clone().detach()
+        
+        B, num_patches, C = x.shape
+        # 检查 pos_embed 维度是否匹配
+        if self.pos_embed.shape[1] != num_patches:
+            logger.warning(
+                f"Position embedding dimension mismatch: "
+                f"pos_embed has {self.pos_embed.shape[1]} patches, "
+                f"but input has {num_patches} patches. "
+                f"Reinitializing pos_embed dynamically..."
+            )
+            # 动态重新初始化 pos_embed
+            new_pos_embed = get_sinusoid_encoding_table(num_patches, self.embed_dim)
+            # 如果 pos_embed 是 Parameter，需要更新其数据；否则直接替换
+            if isinstance(self.pos_embed, nn.Parameter):
+                # 更新 Parameter 的数据
+                with torch.no_grad():
+                    self.pos_embed.data = new_pos_embed.to(self.pos_embed.device)
+            else:
+                # 如果不是 Parameter，直接替换（只替换一次，避免每次 forward 都重新赋值）
+                if not hasattr(self, '_pos_embed_reinitialized'):
+                    self.pos_embed = new_pos_embed.to(x.device)
+                    self._pos_embed_reinitialized = True
+                else:
+                    # 如果已经重新初始化过，直接使用
+                    pass
+            logger.info(f"Reinitialized pos_embed to shape: {self.pos_embed.shape if isinstance(self.pos_embed, nn.Parameter) else new_pos_embed.shape}")
+        
+        # 确保 pos_embed 在正确的设备上
+        pos_embed = self.pos_embed.type_as(x).to(x.device).clone().detach()
+        x = x + pos_embed
 
         B, num_patches, C = x.shape
         # 在forward_features方法中

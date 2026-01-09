@@ -232,8 +232,22 @@ def videomae_classifier_small_patch16_224(
     use_mean_pooling=False,
     **kwargs,
 ):
+    # 确保 img_size 是正确的格式
+    if isinstance(img_size, (list, tuple)):
+        if len(img_size) == 2:
+            img_size_tuple = tuple(img_size)
+        else:
+            raise ValueError(f"img_size should be (H, W) or [H, W], got {img_size}")
+    elif isinstance(img_size, int):
+        # 单个整数，转换为正方形
+        img_size_tuple = (img_size, img_size)
+    else:
+        raise ValueError(f"Unsupported img_size type: {type(img_size)}, value: {img_size}")
+    
+    logger.info(f"[VIDEOMAE_CLASSIFIER] Initializing with img_size: {img_size_tuple}, patch_size: {patch_size}, in_chans: {in_chans}")
+    
     model = VideoMAEClassifier(
-        img_size=img_size,
+        img_size=img_size_tuple,
         patch_size=patch_size,
         encoder_in_chans=in_chans,
         encoder_embed_dim=384,

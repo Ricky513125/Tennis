@@ -65,12 +65,16 @@ def get_model(cfg, ckpt_pth=None, input_size=224, patch_size=16, in_chans=None):
                 else:
                     decoder_num_classes = 1536  # 默认
             
+            # 获取 num_frames
+            num_frames = getattr(cfg.data_module, 'num_frames', 16)
+            
             model = func(
                 ckpt_pth=ckpt_pth,
                 img_size=input_size,
                 patch_size=patch_size,
                 encoder_in_chans=in_chans,
                 decoder_num_classes=decoder_num_classes,
+                num_frames=num_frames,  # 传递 num_frames
             )
         print(f"[GET_MODEL] Model created successfully")
     elif len(cfg.trainer.model.split("_")) > 1 and cfg.trainer.model.split("_")[1] == "classifier":
@@ -80,9 +84,21 @@ def get_model(cfg, ckpt_pth=None, input_size=224, patch_size=16, in_chans=None):
         else:
             raise Exception(f"{scale} is not supported!")
 
+        # 确保 img_size 是正确的格式
+        # input_size 可能是列表 [H, W] 或单个整数
+        if isinstance(input_size, list):
+            # 转换为元组 (H, W)，注意顺序：input_size 通常是 [H, W]
+            img_size = tuple(input_size)
+        elif isinstance(input_size, (tuple, int)):
+            img_size = input_size
+        else:
+            raise ValueError(f"Unsupported input_size type: {type(input_size)}, value: {input_size}")
+        
+        logger.info(f"[GET_MODEL] Classifier model - img_size: {img_size}, patch_size: {patch_size}, in_chans: {in_chans}")
+        
         model = func(
             ckpt_pth=ckpt_pth,
-            img_size=input_size,
+            img_size=img_size,
             patch_size=patch_size,
             in_chans=in_chans,
             num_classes_action=cfg.data_module.num_classes_action,
