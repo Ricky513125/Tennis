@@ -1,0 +1,53 @@
+defaults:
+  - _self_
+  - dataset: tennis  # tennis dataset
+
+# Augmentation parameters
+color_jitter: 0.0
+train_interpolation: bicubic
+
+# Modality parameters
+mode: ['rgb', 'flow', 'skeleton']
+mean: [
+  [0.367370, 0.426884, 0.455794],  # RGB mean (calculated from Tennis dataset)
+  [0.0507, 0.4671],  # Flow mean
+  [
+    0.005979, 0.006135, 0.006135, 0.005963, 0.005763, 0.005998, 0.005870,
+    0.005277, 0.005162, 0.004691, 0.004654, 0.005420, 0.005283, 0.005718,
+    0.005642, 0.005557, 0.005492
+  ]  # Skeleton mean (17 channels)
+]
+std: [
+  [0.189776, 0.183965, 0.207775],  # RGB std (calculated from Tennis dataset)
+  [10.9280, 8.6857],  # Flow std
+  [
+    0.047612, 0.048797, 0.048809, 0.047665, 0.046263, 0.047610, 0.046673,
+    0.042440, 0.041714, 0.038086, 0.037877, 0.042837, 0.041829, 0.045319,
+    0.044798, 0.044088, 0.043690
+  ]  # Skeleton std (17 channels)
+]
+input_size: [[224, 384], [224, 384], [224, 384]]  # RGB, Flow, Skeleton - 保持宽高比一致
+patch_size: [
+  [16, 16],  # RGB
+  [16, 16],  # Flow
+  [16, 16]   # Skeleton
+]
+
+# Target dataset (Tennis)
+target_data_dir: /mnt/ssd2/lingyu/Tennis/data/TENNIS/
+unlabel_json_path: /mnt/ssd2/lingyu/Tennis/unlabel.json
+# Few-shot evaluation JSON (使用 train.json 作为评估数据，包含标签)
+fewshot_eval_json_path: /mnt/ssd2/lingyu/Tennis/train.json
+target_json_path: /mnt/ssd2/lingyu/Tennis/train.json
+skeleton_dir: /mnt/ssd2/lingyu/Tennis/data/TENNIS/skeletons/f3set-tennis
+
+num_frames: 16
+mask_type: tube # ['random', 'tube']
+mask_ratio: 0.75
+
+# For few-shot evaluation (if needed)
+num_classes_action: 204  # Ego4D action classes (not used in unlabel-only mode)
+n_way: 5
+k_shot: 5
+q_sample: 15
+episodes: 600

@@ -37,7 +37,7 @@ class MMDistillTrainer(pl.LightningModule):
             patch_size=cfg.data_module.patch_size[1][0],
             in_chans=cfg.trainer.in_chans[1],
         )
-        self.teacher_pose = get_model(
+        self.teacher_skeleton = get_model(
             cfg,
             ckpt_pth=cfg.trainer.ckpt_path[2],
             input_size=cfg.data_module.input_size[2],
@@ -48,7 +48,7 @@ class MMDistillTrainer(pl.LightningModule):
         self.teacher_rgb = copy.deepcopy(self.student_rgb)
         self.teacher_rgb.requires_grad_(False)
         self.teacher_flow.requires_grad_(False)
-        self.teacher_pose.requires_grad_(False)
+        self.teacher_skeleton.requires_grad_(False)
 
         # loss
         self.ce_loss = nn.CrossEntropyLoss()
@@ -87,44 +87,44 @@ class MMDistillTrainer(pl.LightningModule):
         self,
         unlabel_frames_rgb_w,
         unlabel_frames_flow_w,
-        unlabel_frames_pose_w,
+        unlabel_frames_skeleton_w,
         mask=None,
     ):
         # feature distillation
         fr, _ = self.teacher_rgb(unlabel_frames_rgb_w, mask)
         ff, _ = self.teacher_flow(unlabel_frames_flow_w, mask)
-        fp, _ = self.teacher_pose(unlabel_frames_pose_w, mask)
+        fs, _ = self.teacher_skeleton(unlabel_frames_skeleton_w, mask)
         x_rgb, _ = self.student_rgb(unlabel_frames_rgb_w, mask)
-        trans_rgb, trans_flow, trans_pose = self.cmt(x_rgb)
+        trans_rgb, trans_flow, trans_skeleton = self.cmt(x_rgb)
 
         trans_loss_rgb = self.mse_loss(trans_rgb, fr.detach())
         trans_loss_flow = self.mse_loss(trans_flow, ff.detach())
-        trans_loss_pose = self.mse_loss(trans_pose, fp.detach())
-        return trans_loss_rgb, trans_loss_flow, trans_loss_pose
+        trans_loss_skeleton = self.mse_loss(trans_skeleton, fs.detach())
+        return trans_loss_rgb, trans_loss_flow, trans_loss_skeleton
 
     def training_step(self, batch, batch_idx):
         input = batch
 
         unlabel_frames_rgb_w = input["unlabel_frames_rgb"]
         unlabel_frames_flow_w = input["unlabel_frames_flow"]
-        unlabel_frames_pose_w = input["unlabel_frames_pose"]
+        unlabel_frames_skeleton_w = input["unlabel_frames_skeleton"]
         bool_masked_pos = input["mask"]
         bool_masked_pos = bool_masked_pos.flatten(1).to(torch.bool)
 
-        trans_loss_rgb, trans_loss_flow, trans_loss_pose = self._forward_loss_action(
+        trans_loss_rgb, trans_loss_flow, trans_loss_skeleton = self._forward_loss_action(
             unlabel_frames_rgb_w,
             unlabel_frames_flow_w,
-            unlabel_frames_pose_w,
+            unlabel_frames_skeleton_w,
             bool_masked_pos,
         )
 
-        loss = trans_loss_rgb + trans_loss_flow + trans_loss_pose
+        loss = trans_loss_rgb + trans_loss_flow + trans_loss_skeleton
 
         outputs = {
             "train_loss": loss.item(),
             "trans_loss_rgb": trans_loss_rgb.item(),
             "trans_loss_flow": trans_loss_flow.item(),
-            "trans_loss_pose": trans_loss_pose.item(),
+            "trans_loss_skeleton": trans_loss_skeleton.item(),
         }
 
         self.log("lr", self.trainer.optimizers[0].param_groups[0]["lr"])

@@ -10,6 +10,7 @@ from pytorch_lightning import Trainer, loggers
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 from datamodule.lit_unlabel_combined_mm_data_module import UnlabelCombinedMMDataModule
+from datamodule.lit_tennis_unlabel_combined_mm_data_module import TennisUnlabelCombinedMMDataModule
 from models.lit_MMDistillTrainer import MMDistillTrainer
 
 warnings.filterwarnings("ignore")
@@ -24,8 +25,14 @@ def main(cfg):
     np.random.seed(cfg.seed)
     random.seed(cfg.seed)
 
-    # data module
-    data_module = UnlabelCombinedMMDataModule(cfg)
+    # data module - 根据数据集类型选择
+    dataset_name = cfg.data_module.dataset if hasattr(cfg.data_module, 'dataset') else None
+    if dataset_name == "tennis":
+        logger.info("Using Tennis dataset for multimodal distillation")
+        data_module = TennisUnlabelCombinedMMDataModule(cfg)
+    else:
+        logger.info("Using Ego4D dataset for multimodal distillation")
+        data_module = UnlabelCombinedMMDataModule(cfg)
 
     # model
     model = MMDistillTrainer(cfg)

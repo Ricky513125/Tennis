@@ -15,12 +15,12 @@ class CrossModalTranslate(nn.Module):
         self.mlp_to_rgb = nn.Sequential(
             nn.Linear(self.dim, self.dim), nn.ReLU(), nn.Linear(self.dim, self.dim)
         )
-        self.mlp_to_pose = nn.Sequential(
+        self.mlp_to_skeleton = nn.Sequential(
             nn.Linear(self.dim, self.dim), nn.ReLU(), nn.Linear(self.dim, self.dim)
         )
 
     def forward(self, x):
         x_rgb = self.mlp_to_rgb(x)
         x_flow = self.mlp_to_flow(x)
-        x_pose = self.mlp_to_pose(x)
-        return x_rgb, x_flow, x_pose
+        x_skeleton = self.mlp_to_skeleton(x)
+        return x_rgb, x_flow, x_skeleton
