@@ -96,15 +96,35 @@ class MaskGeneration(object):
 
 class DataAugmentationForUnlabelRGB(object):
     def __init__(
-        self, cfg, input_size=224, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+        self, cfg, input_size=None, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
     ):
         self.cfg = cfg
-        # 元宝添加：先设置 input_size 和 mean/std
-        self.input_size = [224, 384] if isinstance(input_size, (list, tuple)) else input_size
+        
+        # 从配置中读取 input_size（如果未提供）
+        if input_size is None:
+            # 尝试从配置中读取
+            if hasattr(cfg, 'input_size'):
+                if isinstance(cfg.input_size, list) and len(cfg.input_size) > 0:
+                    # 多模态配置：input_size 是列表 [[224, 384], [224, 384], [224, 384]]
+                    # 取第一个（RGB）
+                    if isinstance(cfg.input_size[0], (list, tuple)):
+                        input_size = list(cfg.input_size[0])
+                    else:
+                        input_size = cfg.input_size[0]
+                else:
+                    input_size = cfg.input_size
+            else:
+                input_size = [224, 384]  # 默认值
+        
+        # 处理 input_size
         if isinstance(input_size, (list, tuple)) and len(input_size) == 2:
-            self.input_size = input_size
+            self.input_size = list(input_size)
+        elif isinstance(input_size, int):
+            self.input_size = [input_size, input_size]
         else:
-            self.input_size = [input_size, input_size] if isinstance(input_size, int) else [224, 384]
+            self.input_size = [224, 384]  # 默认值
+        
+        logger.info(f"[AUGMENTATION] DataAugmentationForUnlabelRGB initialized with input_size: {self.input_size}")
         
         # 转换为 Tensor 格式
         self.mean = torch.tensor(mean).view(-1, 1, 1) if isinstance(mean, list) else mean
@@ -127,12 +147,25 @@ class DataAugmentationForUnlabelRGB(object):
         # 自定义 transform 来处理视频 Tensor [T, C, H, W]
         class VideoRandomResizedCrop:
             def __init__(self, size):
-                self.size = size if isinstance(size, (tuple, list)) else (size, size)
-                self.crop = transforms.RandomResizedCrop(self.size)
+                # size 可能是 [H, W] 列表或单个整数
+                if isinstance(size, (list, tuple)) and len(size) == 2:
+                    self.size = tuple(size)  # (H, W)
+                elif isinstance(size, int):
+                    self.size = (size, size)  # (size, size)
+                else:
+                    self.size = (224, 384)  # 默认值
+                
+                # RandomResizedCrop 的 size 参数应该是单个整数（输出是正方形）
+                # 如果要输出非正方形，需要先 crop 然后 resize
+                # 这里我们使用目标尺寸的较小值作为 crop size，然后 resize 到目标尺寸
+                crop_size = min(self.size)
+                self.crop = transforms.RandomResizedCrop(crop_size)
+                self.target_size = self.size
+                logger.debug(f"[VideoRandomResizedCrop] crop_size: {crop_size}, target_size: {self.target_size}")
             
             def __call__(self, tensor):
                 # tensor: [T, C, H, W]
-                # 对每一帧分别应用 RandomResizedCrop
+                # 对每一帧分别应用 RandomResizedCrop 和 resize
                 T, C, H, W = tensor.shape
                 cropped_frames = []
                 for t in range(T):
@@ -141,6 +174,9 @@ class DataAugmentationForUnlabelRGB(object):
                     # 需要先转换为 PIL Image
                     frame_pil = transforms.ToPILImage()(frame)
                     cropped_frame = self.crop(frame_pil)
+                    # 如果目标尺寸不是正方形，需要 resize
+                    if self.target_size[0] != self.target_size[1]:
+                        cropped_frame = cropped_frame.resize(self.target_size[::-1], Image.BILINEAR)  # PIL 使用 (W, H)
                     cropped_frames.append(transforms.ToTensor()(cropped_frame))
                 return torch.stack(cropped_frames, dim=0)  # [T, C, H, W]
         
