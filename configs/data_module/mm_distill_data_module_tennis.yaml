@@ -48,6 +48,10 @@ mask_ratio: 0.75
 # For few-shot evaluation (if needed)
 num_classes_action: 204  # Ego4D action classes (not used in unlabel-only mode)
 n_way: 5
-k_shot: 5
-q_sample: 15
-episodes: 250  # 调整为 250，小于可创建的最大值 271，留一些余量
+k_shot: 1  # 1-shot learning: 每个类别只有1个支持样本
+q_sample: 15  # 每个类别的查询样本数
+episodes: 400  # 1-shot 需要的样本更少，可以创建更多 episodes
+# 注意：
+# - 当前配置：batch_size = n_way * (k_shot + q_sample) = 5 * (1 + 15) = 80
+# - 每个 action 类别至少需要 (k_shot + q_sample) = 16 个样本
+# - 如果改为 k_shot=5，需要将 episodes 调整为 250
