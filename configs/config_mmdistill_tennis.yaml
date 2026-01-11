@@ -19,3 +19,4 @@ ckpt_path:
 
 batch_size: 4
 num_workers: 2
+check_val_every_n_epoch: 999  # 暂时禁用验证，避免 few-shot 评估问题

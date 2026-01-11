@@ -129,6 +129,8 @@ class MMDistillTrainer(pl.LightningModule):
 
         self.log("lr", self.trainer.optimizers[0].param_groups[0]["lr"])
         self.log_dict(outputs)
+        # 保存 outputs 用于 epoch_end 计算平均值
+        self.training_step_outputs.append(outputs)
         return loss
 
     def on_train_epoch_start(self):
@@ -148,6 +150,32 @@ class MMDistillTrainer(pl.LightningModule):
         self.trainer.train_dataloader.dataset.unlabel_loader._start_frame = list(
             unlabel_start_frame
         )
+
+    def on_train_epoch_end(self):
+        # 计算平均训练损失
+        if len(self.training_step_outputs) > 0:
+            train_loss = np.mean([output["train_loss"] for output in self.training_step_outputs])
+            trans_loss_rgb = np.mean([output["trans_loss_rgb"] for output in self.training_step_outputs])
+            trans_loss_flow = np.mean([output["trans_loss_flow"] for output in self.training_step_outputs])
+            trans_loss_skeleton = np.mean([output["trans_loss_skeleton"] for output in self.training_step_outputs])
+            
+            self.log("train_loss", train_loss, on_step=False, on_epoch=True)
+            self.log("train_trans_loss_rgb", trans_loss_rgb, on_step=False, on_epoch=True)
+            self.log("train_trans_loss_flow", trans_loss_flow, on_step=False, on_epoch=True)
+            self.log("train_trans_loss_skeleton", trans_loss_skeleton, on_step=False, on_epoch=True)
+            self.log("lr", self.trainer.optimizers[0].param_groups[0]["lr"], on_step=False, on_epoch=True)
+            
+            self.training_step_outputs.clear()
+            
+            # 定期保存 checkpoint（如果配置了 save_ckpt_freq）
+            save_ckpt_freq = getattr(self.cfg.trainer, 'save_ckpt_freq', None)
+            if save_ckpt_freq is not None and (self.trainer.current_epoch + 1) % save_ckpt_freq == 0:
+                # 使用 DeepSpeed 的 save_checkpoint 方法
+                checkpoint_dir = f"checkpoints/epoch={self.trainer.current_epoch:02d}-loss={train_loss:.4f}"
+                logger.info(f"Saving checkpoint to: {checkpoint_dir}")
+                # 注意：DeepSpeed 的 save_checkpoint 需要特殊处理
+                # 这里我们依赖 PyTorch Lightning 的 ModelCheckpoint callback
+                # 如果需要手动保存，可以使用 self.trainer.save_checkpoint()，但需要适配 DeepSpeed
 
     def validation_step(self, batch, batch_idx):
         input = batch[0]

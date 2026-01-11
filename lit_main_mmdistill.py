@@ -51,13 +51,29 @@ def main(cfg):
 
     train_logger = loggers.TensorBoardLogger("tensor_board", default_hp_metric=False)
 
-    checkpoint_callback = ModelCheckpoint(
-        monitor="val_top1_action",
-        dirpath="checkpoints/",
-        filename="{epoch:02d}-{val_top1_action:.4f}",
-        save_top_k=5,
-        mode="max",
-    )
+    # 由于验证被禁用，使用训练损失来保存 checkpoint
+    # 如果验证启用，则使用验证指标
+    check_val_every_n_epoch = getattr(cfg, 'check_val_every_n_epoch', 999)
+    if check_val_every_n_epoch >= 999:
+        # 验证被禁用，监控训练损失
+        checkpoint_callback = ModelCheckpoint(
+            monitor="train_loss",
+            dirpath="checkpoints/",
+            filename="{epoch:02d}-{train_loss:.4f}",
+            save_top_k=5,
+            mode="min",
+            save_last=True,  # 总是保存最后一个 epoch
+        )
+    else:
+        # 验证启用，监控验证指标
+        checkpoint_callback = ModelCheckpoint(
+            monitor="val_top1_action",
+            dirpath="checkpoints/",
+            filename="{epoch:02d}-{val_top1_action:.4f}",
+            save_top_k=5,
+            mode="max",
+            save_last=True,  # 总是保存最后一个 epoch
+        )
 
     trainer = Trainer(
         accelerator=cfg.accelerator,
@@ -68,7 +84,7 @@ def main(cfg):
         callbacks=[checkpoint_callback],
         detect_anomaly=True,
         use_distributed_sampler=False,
-        check_val_every_n_epoch=999,  # 暂时禁用验证，避免 few-shot 评估问题
+        check_val_every_n_epoch=check_val_every_n_epoch,
     )
 
     if cfg.train:

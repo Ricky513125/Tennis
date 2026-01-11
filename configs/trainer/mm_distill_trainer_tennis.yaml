@@ -12,7 +12,7 @@ use_mean_pooling: True
 encoder_embed_dim: 384
 
 # Optimizer parameters
-epochs: 100
+epochs: 50
 
 opt: adamw
 opt_eps: 1e-8
@@ -26,3 +26,4 @@ warmup_lr: 1e-6
 min_lr: 1e-6
 warmup_epochs: 5
 use_checkpoint: False
+save_ckpt_freq: 5  # 每 10 个 epoch 保存一次 checkpoint（可选，主要用于手动保存）
