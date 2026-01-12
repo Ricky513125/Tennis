@@ -146,7 +146,8 @@ class DataAugmentationForUnlabelRGB(object):
 
     def _construct_weak_aug(self):
         # 自定义 transform 来处理视频 Tensor [T, C, H, W]
-        class VideoRandomResizedCrop:
+        # 使用 CenterCrop 而不是 RandomResizedCrop，与 Flow 处理保持一致
+        class VideoCenterCrop:
             def __init__(self, size):
                 # size 可能是 [H, W] 列表或单个整数
                 if isinstance(size, (list, tuple)) and len(size) == 2:
@@ -156,29 +157,51 @@ class DataAugmentationForUnlabelRGB(object):
                 else:
                     self.size = (224, 384)  # 默认值
                 
-                # RandomResizedCrop 的 size 参数应该是单个整数（输出是正方形）
-                # 如果要输出非正方形，需要先 crop 然后 resize
-                # 这里我们使用目标尺寸的较小值作为 crop size，然后 resize 到目标尺寸
-                crop_size = min(self.size)
-                self.crop = transforms.RandomResizedCrop(crop_size)
-                self.target_size = self.size
-                logger.debug(f"[VideoRandomResizedCrop] crop_size: {crop_size}, target_size: {self.target_size}")
+                logger.debug(f"[VideoCenterCrop] target_size: {self.size}")
             
             def __call__(self, tensor):
                 # tensor: [T, C, H, W]
-                # 对每一帧分别应用 RandomResizedCrop 和 resize
+                # 对每一帧分别应用 CenterCrop
                 T, C, H, W = tensor.shape
+                target_H, target_W = self.size
                 cropped_frames = []
+                
                 for t in range(T):
                     frame = tensor[t]  # [C, H, W]
-                    # RandomResizedCrop 期望 PIL Image 或 [C, H, W] Tensor
-                    # 需要先转换为 PIL Image
-                    frame_pil = transforms.ToPILImage()(frame)
-                    cropped_frame = self.crop(frame_pil)
-                    # 如果目标尺寸不是正方形，需要 resize
-                    if self.target_size[0] != self.target_size[1]:
-                        cropped_frame = cropped_frame.resize(self.target_size[::-1], PILImage.BILINEAR)  # PIL 使用 (W, H)
-                    cropped_frames.append(transforms.ToTensor()(cropped_frame))
+                    
+                    # 如果尺寸已经匹配，直接返回
+                    if H == target_H and W == target_W:
+                        cropped_frames.append(frame)
+                        continue
+                    
+                    # 居中裁剪：计算裁剪起始位置
+                    if H != target_H:
+                        start_h = (H - target_H) // 2
+                        end_h = start_h + target_H
+                    else:
+                        start_h = 0
+                        end_h = H
+                    
+                    if W != target_W:
+                        start_w = (W - target_W) // 2
+                        end_w = start_w + target_W
+                    else:
+                        start_w = 0
+                        end_w = W
+                    
+                    # 执行裁剪: [C, H, W] -> [C, target_H, target_W]
+                    cropped_frame = frame[:, start_h:end_h, start_w:end_w]
+                    
+                    # 如果裁剪后尺寸仍不匹配（可能因为原始尺寸小于目标尺寸），进行 resize
+                    if cropped_frame.shape[1] != target_H or cropped_frame.shape[2] != target_W:
+                        # 转换为 PIL Image 进行 resize
+                        frame_pil = transforms.ToPILImage()(cropped_frame)
+                        cropped_frame = transforms.ToTensor()(
+                            frame_pil.resize((target_W, target_H), PILImage.BILINEAR)  # PIL 使用 (W, H)
+                        )
+                    
+                    cropped_frames.append(cropped_frame)
+                
                 return torch.stack(cropped_frames, dim=0)  # [T, C, H, W]
         
         class VideoRandomHorizontalFlip:
@@ -196,7 +219,7 @@ class DataAugmentationForUnlabelRGB(object):
         self.weak_aug = transforms.Compose(
             [
                 ToTensor(),  # PIL Image 列表 -> [T, C, H, W]
-                VideoRandomResizedCrop(self.input_size),  # [T, C, H, W] -> [T, C, H, W]
+                VideoCenterCrop(self.input_size),  # [T, C, H, W] -> [T, C, H, W] (居中裁剪，与 Flow 一致)
                 VideoRandomHorizontalFlip(p=0.5),  # [T, C, H, W] -> [T, C, H, W]
                 transforms.Lambda(lambda x: self._normalize_tensor(x)),  # 归一化
             ]
