@@ -258,6 +258,17 @@ class MMDistillTrainer(pl.LightningModule):
         k_shot = self.cfg.data_module.k_shot
         q_sample = self.cfg.data_module.q_sample
 
+        # 检查 batch size 是否正确
+        expected_batch_size = n_way * (k_shot + q_sample)
+        actual_batch_size = frames_rgb.shape[0]
+        
+        if actual_batch_size != expected_batch_size:
+            logger.warning(
+                f"Test batch size mismatch: expected {expected_batch_size}, got {actual_batch_size}. "
+                f"Skipping this test step."
+            )
+            return None
+
         # RGB
         frames_rgb, support_frames_rgb, query_frames_rgb = self.preprocess_frames(
             frames=frames_rgb, n_way=n_way, k_shot=k_shot, q_sample=q_sample
@@ -311,6 +322,10 @@ class MMDistillTrainer(pl.LightningModule):
         self.test_step_outputs.append(outputs)
 
     def on_test_epoch_end(self):
+        if len(self.test_step_outputs) == 0:
+            logger.warning("No test outputs collected. All batches may have been skipped due to size mismatch.")
+            return
+        
         top1_action_ensemble = np.mean(
             [output["top1_action_ensemble"] for output in self.test_step_outputs]
         )
@@ -327,6 +342,7 @@ class MMDistillTrainer(pl.LightningModule):
             top1_action_ensemble_std_error,
             on_step=False,
         )
+        self.test_step_outputs.clear()
 
     def scale_lr(self):
         self.total_batch_size = self.cfg.batch_size * len(self.cfg.devices)
