@@ -461,7 +461,6 @@ class MMDistillTrainer(pl.LightningModule):
             solver="lbfgs",
             max_iter=1000,
             C=1,
-            multi_class="multinomial",
         )
 
         support_features_np = support.data.cpu().numpy()
@@ -495,7 +494,6 @@ class MMDistillTrainer(pl.LightningModule):
             solver="lbfgs",
             max_iter=1000,
             C=1,
-            multi_class="multinomial",
         )
 
         support_features_np = support.data.cpu().numpy()
