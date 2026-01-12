@@ -284,9 +284,9 @@ class MMDistillTrainer(pl.LightningModule):
                 f"to {actual_batch_size} (n_way={n_way})"
             )
         
-        # 确保 n_way 至少为 1
-        if n_way < 1:
-            logger.debug(f"n_way too small: {n_way}. Skipping this test step.")
+        # 确保 n_way 至少为 2（torchmetrics.Accuracy 要求 num_classes > 1）
+        if n_way < 2:
+            logger.debug(f"n_way too small: {n_way}. Need at least 2 classes for accuracy calculation. Skipping this test step.")
             return None
 
         # RGB - 使用动态计算的 n_way
@@ -330,7 +330,7 @@ class MMDistillTrainer(pl.LightningModule):
             query_masks=query_masks[:2],
         )
 
-        # 使用动态的 n_way 创建 accuracy metric
+        # 使用动态的 n_way 创建 accuracy metric（确保 n_way >= 2）
         acc = torchmetrics.Accuracy(task="multiclass", num_classes=n_way)
 
         # top1_action = acc(pred_rgb.cpu(), query_action_label.cpu())
