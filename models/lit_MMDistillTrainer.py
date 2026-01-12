@@ -321,6 +321,15 @@ class MMDistillTrainer(pl.LightningModule):
         # )
 
         # prediction with mask and ensemble
+        pred_rgb_ensemble, prob_rgb_original = self.LR_ensemble(
+            self.teacher_rgb,
+            support=support_frames_rgb,
+            support_label=support_action_label,
+            query=query_frames_rgb,
+            support_mask=support_mask,
+            query_masks=query_masks[:2],
+        )
+
         # 使用动态的 n_way 创建 accuracy metric
         acc = torchmetrics.Accuracy(task="multiclass", num_classes=n_way)
 
