@@ -166,8 +166,20 @@ class TennisUnlabelCombinedMMDataModule(pl.LightningDataModule):
                 self.data_module_cfg.num_frames,
                 "RGB",
             )
+            
+            # 为 test stage 创建 batch_sampler
+            batch_sampler = BatchSampler(
+                sampler=DistributedSampler(
+                    dataset=range(self.eval_batch_size * self.episodes),
+                    num_replicas=dist.get_world_size() if dist.is_initialized() else 1,
+                    rank=dist.get_rank() if dist.is_initialized() else 0,
+                ),
+                batch_size=self.eval_batch_size,
+                drop_last=False,
+            )
             self.episodic_batch_sampler_test = EpisodicBatchSampler(
                 dataset=self.test_dataset,
+                batch_sampler=batch_sampler,
                 n_way=self.n_way,
                 k_shot=self.k_shot,
                 q_sample=self.q_sample,
@@ -175,6 +187,9 @@ class TennisUnlabelCombinedMMDataModule(pl.LightningDataModule):
             )
 
     def train_dataloader(self):
+        # 评估阶段可能没有 train_dataset
+        if not hasattr(self, 'train_dataset') or self.train_dataset is None:
+            return None
         return DataLoader(
             self.train_dataset,
             batch_sampler=self.batch_sampler_train,
@@ -182,6 +197,9 @@ class TennisUnlabelCombinedMMDataModule(pl.LightningDataModule):
         )
 
     def val_dataloader(self):
+        # 测试阶段可能没有 val_dataset
+        if not hasattr(self, 'val_dataset') or self.val_dataset is None:
+            return None
         return DataLoader(
             self.val_dataset,
             batch_sampler=self.episodic_batch_sampler_val,
