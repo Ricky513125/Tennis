@@ -93,7 +93,14 @@ def main(cfg):
 
     if cfg.test:
         logging.basicConfig(level=logging.DEBUG)
-        trainer.test(model, data_module)
+        # 如果配置中指定了 checkpoint 路径，则加载它
+        ckpt_path = getattr(cfg, 'ckpt_path', None)
+        if ckpt_path and ckpt_path != "":
+            logger.info(f"Loading checkpoint from: {ckpt_path}")
+            trainer.test(model, data_module, ckpt_path=ckpt_path)
+        else:
+            logger.warning("No checkpoint path specified. Testing with randomly initialized model.")
+            trainer.test(model, data_module)
 
 
 if __name__ == "__main__":
