@@ -252,25 +252,45 @@ class MMDistillTrainer(pl.LightningModule):
         bool_masked_pos = bool_masked_pos.flatten(1).to(torch.bool)
 
         # convert labels for fewshot evaluation
-        _, action_idx = torch.unique(action_idx, return_inverse=True)
+        unique_labels, action_idx = torch.unique(action_idx, return_inverse=True)
 
-        n_way = self.cfg.data_module.n_way
         k_shot = self.cfg.data_module.k_shot
         q_sample = self.cfg.data_module.q_sample
-
-        # 检查 batch size 是否正确
-        expected_batch_size = n_way * (k_shot + q_sample)
+        samples_per_class = k_shot + q_sample
+        
         actual_batch_size = frames_rgb.shape[0]
         
-        if actual_batch_size != expected_batch_size:
-            logger.warning(
-                f"Test batch size mismatch: expected {expected_batch_size}, got {actual_batch_size}. "
+        # 动态计算 n_way：根据实际 batch size 和每个类别需要的样本数
+        # 如果 batch size 不能被 samples_per_class 整除，说明样本不足
+        if actual_batch_size < samples_per_class:
+            logger.debug(
+                f"Test batch too small: got {actual_batch_size}, need at least {samples_per_class}. "
                 f"Skipping this test step."
             )
             return None
+        
+        # 计算实际可以使用的 n_way
+        n_way = actual_batch_size // samples_per_class
+        
+        # 如果无法整除，截断到可以整除的部分
+        original_batch_size = actual_batch_size
+        if actual_batch_size % samples_per_class != 0:
+            actual_batch_size = n_way * samples_per_class
+            frames_rgb = frames_rgb[:actual_batch_size]
+            action_idx = action_idx[:actual_batch_size]
+            bool_masked_pos = bool_masked_pos[:actual_batch_size]
+            logger.debug(
+                f"Adjusted batch size from {original_batch_size} "
+                f"to {actual_batch_size} (n_way={n_way})"
+            )
+        
+        # 确保 n_way 至少为 1
+        if n_way < 1:
+            logger.debug(f"n_way too small: {n_way}. Skipping this test step.")
+            return None
 
-        # RGB
-        frames_rgb, support_frames_rgb, query_frames_rgb = self.preprocess_frames(
+        # RGB - 使用动态计算的 n_way
+        frames_rgb, support_frames_rgb, query_frames_rgb = self.preprocess_frames_dynamic(
             frames=frames_rgb, n_way=n_way, k_shot=k_shot, q_sample=q_sample
         )
 
@@ -301,16 +321,8 @@ class MMDistillTrainer(pl.LightningModule):
         # )
 
         # prediction with mask and ensemble
-        pred_rgb_ensemble, prob_rgb_original = self.LR_ensemble(
-            self.teacher_rgb,
-            support=support_frames_rgb,
-            support_label=support_action_label,
-            query=query_frames_rgb,
-            support_mask=support_mask,
-            query_masks=query_masks[:2],
-        )
-
-        acc = torchmetrics.Accuracy(task="multiclass", num_classes=5)
+        # 使用动态的 n_way 创建 accuracy metric
+        acc = torchmetrics.Accuracy(task="multiclass", num_classes=n_way)
 
         # top1_action = acc(pred_rgb.cpu(), query_action_label.cpu())
         top1_action_ensemble = acc(pred_rgb_ensemble.cpu(), query_action_label.cpu())
@@ -366,6 +378,38 @@ class MMDistillTrainer(pl.LightningModule):
                 f"got {actual_batch_size}. "
                 f"Frames shape: {frames.shape}"
             )
+        
+        frames = rearrange(
+            frames, "(n m) c t h w -> n m c t h w", n=n_way, m=(k_shot + q_sample)
+        )
+
+        support_frames = rearrange(
+            frames[:, :k_shot],
+            "n m c t h w -> (n m) c t h w",
+            n=n_way,
+            m=k_shot,
+        )
+        query_frames = rearrange(
+            frames[:, k_shot:],
+            "n m c t h w -> (n m) c t h w",
+            n=n_way,
+            m=q_sample,
+        )
+        return frames, support_frames, query_frames
+
+    def preprocess_frames_dynamic(self, frames, n_way, k_shot, q_sample):
+        """
+        动态处理 frames，允许不完整的 batch
+        与 preprocess_frames 相同，但用于动态 n_way 的情况
+        """
+        expected_batch_size = n_way * (k_shot + q_sample)
+        actual_batch_size = frames.shape[0]
+        
+        if actual_batch_size != expected_batch_size:
+            # 如果仍然不匹配，截断到可以整除的部分
+            actual_batch_size = (actual_batch_size // (k_shot + q_sample)) * (k_shot + q_sample)
+            frames = frames[:actual_batch_size]
+            n_way = actual_batch_size // (k_shot + q_sample)
         
         frames = rearrange(
             frames, "(n m) c t h w -> n m c t h w", n=n_way, m=(k_shot + q_sample)
