@@ -465,6 +465,23 @@ class MMDistillTrainer(pl.LightningModule):
 
         support_features_np = support.data.cpu().numpy()
         support_label_np = support_label.data.cpu().numpy()
+        
+        # 检查 support set 中是否有至少两个不同的类别
+        unique_labels = np.unique(support_label_np)
+        if len(unique_labels) < 2:
+            # 如果只有一个类别，返回默认预测（所有 query 都预测为这个类别）
+            logger.debug(f"Support set contains only {len(unique_labels)} class(es). Using default prediction.")
+            query_features_np = query.data.cpu().numpy()
+            n_query = query_features_np.shape[0]
+            pred = np.full(n_query, unique_labels[0] if len(unique_labels) > 0 else 0)
+            # 创建概率矩阵（所有概率都分配给这个类别）
+            n_classes = len(unique_labels) if len(unique_labels) > 0 else 1
+            prob = np.zeros((n_query, n_classes))
+            prob[:, 0] = 1.0
+            pred = torch.from_numpy(pred).type_as(support)
+            prob = torch.from_numpy(prob).type_as(support)
+            return pred, prob
+        
         clf.fit(support_features_np, support_label_np)
 
         query_features_np = query.data.cpu().numpy()
@@ -498,6 +515,22 @@ class MMDistillTrainer(pl.LightningModule):
 
         support_features_np = support.data.cpu().numpy()
         support_label_np = support_label.data.cpu().numpy()
+        
+        # 检查 support set 中是否有至少两个不同的类别
+        unique_labels = np.unique(support_label_np)
+        if len(unique_labels) < 2:
+            # 如果只有一个类别，返回默认预测（所有 query 都预测为这个类别）
+            logger.debug(f"Support set contains only {len(unique_labels)} class(es). Using default prediction.")
+            n_query = query.shape[0]
+            pred = np.full(n_query, unique_labels[0] if len(unique_labels) > 0 else 0)
+            # 创建概率矩阵（所有概率都分配给这个类别）
+            n_classes = len(unique_labels) if len(unique_labels) > 0 else 1
+            prob = np.zeros((n_query, n_classes))
+            prob[:, 0] = 1.0
+            pred = torch.from_numpy(pred).type_as(support)
+            prob = torch.from_numpy(prob).type_as(support)
+            return pred, prob
+        
         clf.fit(support_features_np, support_label_np)
 
         probs = []
