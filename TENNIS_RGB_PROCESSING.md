@@ -6,17 +6,19 @@
 - **数据目录**: `/mnt/ssd2/lingyu/Tennis/data/TENNIS/vid_frames_224/{video_id}/`
 - **文件格式**: `{frame_id:06d}.jpg` (例如: `000001.jpg`)
 - **数据格式**: JPEG 图像，PIL Image 对象
+- **原始尺寸**: `(398, 224)` (W × H) - 注意：宽度为 398，高度为 224
 
 ### 1.2 数据加载过程 (`tennis_unlabel_only_dataset.py`)
 
 ```python
 # 1. 从 .jpg 文件加载 RGB 图像
 frame = Image.open(path)  # PIL Image, mode='RGB'
-# 维度: PIL Image 格式，实际像素为 [H, W, C] = [224, 384, 3] (或根据实际图像尺寸)
+# 维度: PIL Image 格式，实际像素为 [H, W, C] = [224, 398, 3] (原始尺寸)
+# 注意：原始图片宽度为 398，会在后续处理中裁剪到 384
 
 # 2. 加载 16 帧 RGB 图像，组成列表
 unlabel_frames = [frame_1, frame_2, ..., frame_16]
-# 每个 frame: PIL Image 对象
+# 每个 frame: PIL Image 对象，尺寸为 (398, 224)
 ```
 
 ### 1.3 数据增强处理
@@ -24,6 +26,11 @@ unlabel_frames = [frame_1, frame_2, ..., frame_16]
 ```python
 # RGB 模式：PIL Image 列表
 # weak_aug 期望 PIL Image 列表，返回 Tensor [T, C, H, W]
+# 处理流程：
+#   1. ToTensor: PIL Image 列表 -> [T, C, H, W] = [16, 3, 224, 398] (原始尺寸)
+#   2. VideoCenterCrop: 居中裁剪 398 -> 384 -> [16, 3, 224, 384]
+#   3. VideoRandomHorizontalFlip: 统一水平翻转 -> [16, 3, 224, 384]
+#   4. 归一化: 应用 mean/std -> [16, 3, 224, 384]
 unlabel_frames = self.transform.weak_aug(unlabel_frames)
 # 输出: [T, C, H, W] = [16, 3, 224, 384]
 
@@ -31,6 +38,11 @@ unlabel_frames = self.transform.weak_aug(unlabel_frames)
 unlabel_frames = unlabel_frames.permute(0, 2, 3, 1)
 # 输出: [T, H, W, C] = [16, 224, 384, 3]
 ```
+
+**⚠️ 重要说明**：
+- 原始 RGB 图片尺寸为 `224×398`，通过居中裁剪到 `224×384`
+- 裁剪方式与 Flow 数据保持一致（Flow 也是从 `224×398` 居中裁剪到 `224×384`）
+- 这确保了 RGB 和 Flow 在空间位置上的对应关系，对多模态训练至关重要
 
 ## 2. 数据预处理阶段
 
@@ -70,20 +82,21 @@ std: [计算得到的标准差R, 计算得到的标准差G, 计算得到的标�
 
 ```python
 # 输入: PIL Image 列表 [img_1, img_2, ..., img_16]
+# 注意：原始图片尺寸可能是 (398, 224) 或 (W, H)
 
 # 第一步: ToTensor() - 将 PIL Image 列表转换为 Tensor
 # ToTensor 内部处理：
 #   - 对每个 PIL Image 调用 transforms.ToTensor() -> [C, H, W]
-#   - Stack 所有帧 -> [T, C, H, W] = [16, 3, 224, 384]
+#   - Stack 所有帧 -> [T, C, H, W] = [16, 3, 224, 398] (原始尺寸)
 video_tensor = ToTensor()(unlabel_frames)  # [T, C, H, W]
 
-# 第二步: VideoRandomResizedCrop - 对每帧分别应用随机裁剪
+# 第二步: VideoCenterCrop - 对每帧分别应用居中裁剪
 # 对每一帧：
-#   - 转换为 PIL Image
-#   - 应用 RandomResizedCrop (随机裁剪到 [224, 384])
-#   - 转换回 Tensor [C, H, W]
+#   - 从 [C, H, W] = [3, 224, 398] 居中裁剪到 [3, 224, 384]
+#   - 计算裁剪起始位置: start_w = (398 - 384) // 2 = 7
+#   - 裁剪: frame[:, :, 7:7+384] -> [3, 224, 384]
 #   - Stack -> [T, C, H, W] = [16, 3, 224, 384]
-video_tensor = VideoRandomResizedCrop([224, 384])(video_tensor)
+video_tensor = VideoCenterCrop([224, 384])(video_tensor)
 
 # 第三步: VideoRandomHorizontalFlip - 统一水平翻转
 # 对所有帧使用相同的随机性（要么全部翻转，要么全部不翻转）
@@ -101,9 +114,18 @@ video_tensor = (video_tensor - mean) / std  # 广播归一化
 
 **关键实现细节**：
 - ✅ `ToTensor` 类期望 PIL Image 列表，内部会 stack 成 `[T, C, H, W]`
-- ✅ `VideoRandomResizedCrop` 对每帧分别应用裁剪，保持时间一致性
+- ✅ `VideoCenterCrop` 对每帧分别应用居中裁剪，与 Flow 处理方式一致，保持位置对应关系
+- ✅ **居中裁剪的优势**：
+  - 与 Flow 数据（也是居中裁剪）保持一致，确保 RGB 和 Flow 的位置对应
+  - 避免随机裁剪导致的信息丢失和位置不对齐
+  - 训练时每次看到相同的中心区域，提高训练稳定性
 - ✅ `VideoRandomHorizontalFlip` 对所有帧统一翻转，保持时间一致性
 - ✅ 归一化使用广播机制，`mean/std` 形状为 `[1, C, 1, 1]` 与 `[T, C, H, W]` 兼容
+
+**⚠️ 重要说明**：
+- 原始 RGB 图片尺寸为 `224×398`，通过居中裁剪到 `224×384`
+- 裁剪方式与 Flow 数据保持一致（Flow 也是从 `224×398` 居中裁剪到 `224×384`）
+- 这确保了 RGB 和 Flow 在空间位置上的对应关系，对多模态训练至关重要
 
 ### 2.3 输入到训练器的形状
 - **Batch 输入**: `[B, T, H, W, C]` = `[4, 16, 224, 384, 3]`
@@ -398,11 +420,11 @@ optimizer.zero_grad()  # 清零梯度
 
 | 阶段 | 形状 | 说明 |
 |------|------|------|
-| **原始数据** | `[224, 384, 3]` | PIL Image [H, W, C] |
-| **转换为 Tensor** | `[3, 224, 384]` | ToTensor() [C, H, W] |
+| **原始数据** | `[224, 398, 3]` | PIL Image [H, W, C] (原始尺寸) |
+| **转换为 Tensor** | `[3, 224, 398]` | ToTensor() [C, H, W] |
 | **PIL Image 列表** | `[16个 PIL Image]` | 时间序列 |
-| **ToTensor** | `[16, 3, 224, 384]` | 转换为 Tensor [T, C, H, W] |
-| **VideoRandomResizedCrop** | `[16, 3, 224, 384]` | 每帧随机裁剪 |
+| **ToTensor** | `[16, 3, 224, 398]` | 转换为 Tensor [T, C, H, W] |
+| **VideoCenterCrop** | `[16, 3, 224, 384]` | 每帧居中裁剪 (398→384) |
 | **VideoRandomHorizontalFlip** | `[16, 3, 224, 384]` | 统一水平翻转 |
 | **归一化** | `[16, 3, 224, 384]` | 广播归一化 |
 | **转换为 [T, H, W, C]** | `[16, 224, 384, 3]` | 用于后续处理 |
@@ -432,13 +454,13 @@ optimizer.zero_grad()  # 清零梯度
 ## 9. 数据流图
 
 ```
-.jpg 文件 (PIL Image: [H, W, C])
+.jpg 文件 (PIL Image: [H, W, C] = [224, 398, 3])
     ↓ (加载 16 帧)
-[16个 PIL Image]
+[16个 PIL Image, 每个尺寸 (398, 224)]
     ↓ (ToTensor)
-[T=16, C=3, H=224, W=384]
-    ↓ (VideoRandomResizedCrop)
-[T=16, C=3, H=224, W=384]
+[T=16, C=3, H=224, W=398] (原始尺寸)
+    ↓ (VideoCenterCrop: 居中裁剪 398→384)
+[T=16, C=3, H=224, W=384] (目标尺寸)
     ↓ (VideoRandomHorizontalFlip)
 [T=16, C=3, H=224, W=384]
     ↓ (归一化)
