@@ -178,8 +178,43 @@ class TennisUnlabelCombinedMMDataModule(pl.LightningDataModule):
                 frames_reshaped = frames_tensor.view(T * C, H, W)  # [T*C, H, W]
                 return frames_reshaped, None
         
-        rgb_mean = cfg.data_module.mean[0] if isinstance(cfg.data_module.mean, list) else cfg.data_module.mean
-        rgb_std = cfg.data_module.std[0] if isinstance(cfg.data_module.std, list) else cfg.data_module.std
+        # 正确提取 RGB 的 mean 和 std
+        # cfg.data_module.mean 是列表: [[RGB_mean], [Flow_mean], [Skeleton_mean]]
+        if hasattr(cfg.data_module, 'mean'):
+            if isinstance(cfg.data_module.mean, (list, tuple)) and len(cfg.data_module.mean) > 0:
+                rgb_mean_raw = cfg.data_module.mean[0]
+                # 处理 omegaconf.ListConfig 或其他类型
+                if hasattr(rgb_mean_raw, '__iter__') and not isinstance(rgb_mean_raw, str):
+                    rgb_mean = list(rgb_mean_raw)
+                else:
+                    rgb_mean = rgb_mean_raw
+            else:
+                rgb_mean = cfg.data_module.mean
+        else:
+            rgb_mean = [0.485, 0.456, 0.406]  # ImageNet 默认值
+        
+        if hasattr(cfg.data_module, 'std'):
+            if isinstance(cfg.data_module.std, (list, tuple)) and len(cfg.data_module.std) > 0:
+                rgb_std_raw = cfg.data_module.std[0]
+                # 处理 omegaconf.ListConfig 或其他类型
+                if hasattr(rgb_std_raw, '__iter__') and not isinstance(rgb_std_raw, str):
+                    rgb_std = list(rgb_std_raw)
+                else:
+                    rgb_std = rgb_std_raw
+            else:
+                rgb_std = cfg.data_module.std
+        else:
+            rgb_std = [0.229, 0.224, 0.225]  # ImageNet 默认值
+        
+        # 确保 rgb_mean 和 rgb_std 是长度为 3 的列表（RGB 有 3 个通道）
+        if not isinstance(rgb_mean, (list, tuple)) or len(rgb_mean) != 3:
+            logger.warning(f"RGB mean length is {len(rgb_mean) if isinstance(rgb_mean, (list, tuple)) else 'not a list'}, expected 3. Using ImageNet defaults.")
+            rgb_mean = [0.485, 0.456, 0.406]
+        
+        if not isinstance(rgb_std, (list, tuple)) or len(rgb_std) != 3:
+            logger.warning(f"RGB std length is {len(rgb_std) if isinstance(rgb_std, (list, tuple)) else 'not a list'}, expected 3. Using ImageNet defaults.")
+            rgb_std = [0.229, 0.224, 0.225]
+        
         self.transform_eval = EvalTransformWrapper(
             self.transform_eval_rgb,
             input_size=rgb_input_size or [224, 384],
