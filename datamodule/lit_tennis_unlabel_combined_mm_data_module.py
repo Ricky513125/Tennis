@@ -49,17 +49,71 @@ class TennisUnlabelCombinedMMDataModule(pl.LightningDataModule):
         ]
         
         # 评估用的 transform（只使用 RGB）
-        # 需要从配置中获取 input_size，Tennis 使用 [224, 384]
-        input_size = cfg.data_module.input_size[0] if isinstance(cfg.data_module.input_size, list) else 224
-        if isinstance(input_size, list):
-            input_size = input_size[0]  # 取高度
+        # 使用 DataAugmentationForUnlabelRGB，确保与训练时使用相同的 224x384 尺寸
+        # 从配置中获取 RGB 的 input_size: [224, 384]
+        rgb_input_size = None
+        if hasattr(cfg.data_module, 'input_size'):
+            if isinstance(cfg.data_module.input_size, list) and len(cfg.data_module.input_size) > 0:
+                # 多模态配置：input_size 是列表 [[224, 384], [224, 384], [224, 384]]
+                # 取第一个（RGB）
+                if isinstance(cfg.data_module.input_size[0], (list, tuple)):
+                    rgb_input_size = list(cfg.data_module.input_size[0])
+                else:
+                    rgb_input_size = cfg.data_module.input_size[0]
         
-        self.transform_eval_rgb = DataAugmentationForVideoMAERGB(
-            cfg.data_module, 
-            input_size=input_size,
-            multi_scale_crop=False
+        # 创建评估用的 RGB transform，使用 weak_aug（包含 VideoCenterCrop 到 224x384）
+        self.transform_eval_rgb = DataAugmentationForUnlabelRGB(
+            cfg.data_module,
+            input_size=rgb_input_size,  # [224, 384]
+            mean=cfg.data_module.mean[0] if isinstance(cfg.data_module.mean, list) else cfg.data_module.mean,
+            std=cfg.data_module.std[0] if isinstance(cfg.data_module.std, list) else cfg.data_module.std,
         )
-        self.transform_eval = self.transform_eval_rgb
+        # 评估时只使用 weak_aug（不进行随机翻转，保持一致性）
+        # 但 TennisFewshotEvalDataset 会调用 transform((frames, None))，需要适配
+        # 创建一个包装类，使其兼容评估数据集的调用方式
+        # TennisFewshotEvalDataset 期望输出格式: [T*C, H, W]
+        import torch
+        from datamodule.utils.augmentation import ToTensor, VideoCenterCrop
+        
+        class EvalTransformWrapper:
+            def __init__(self, base_transform, input_size, mean, std):
+                self.base_transform = base_transform
+                self.input_size = input_size  # [224, 384]
+                self.mean = torch.tensor(mean).view(-1, 1, 1) if isinstance(mean, list) else mean
+                self.std = torch.tensor(std).view(-1, 1, 1) if isinstance(std, list) else std
+                # 评估时只进行居中裁剪和归一化，不进行随机翻转
+                self.eval_transform = torch.nn.Sequential(
+                    ToTensor(),  # PIL Image 列表 -> [T, C, H, W]
+                    VideoCenterCrop(self.input_size),  # [T, C, H, W] -> [T, C, H, W] (居中裁剪到 224x384)
+                )
+            
+            def _normalize_tensor(self, tensor):
+                # tensor: [T, C, H, W]
+                # mean/std: [C] -> [1, C, 1, 1]
+                mean = self.mean.view(1, -1, 1, 1)
+                std = self.std.view(1, -1, 1, 1)
+                return (tensor - mean) / std
+            
+            def __call__(self, frames_tuple):
+                # frames_tuple 是 (frames, None) 格式
+                frames, _ = frames_tuple
+                # 应用评估 transform: ToTensor + VideoCenterCrop
+                frames_tensor = self.eval_transform(frames)  # [T, C, H, W]
+                # 归一化
+                frames_tensor = self._normalize_tensor(frames_tensor)  # [T, C, H, W]
+                # 转换为 TennisFewshotEvalDataset 期望的格式: [T*C, H, W]
+                T, C, H, W = frames_tensor.shape
+                frames_reshaped = frames_tensor.view(T * C, H, W)  # [T*C, H, W]
+                return frames_reshaped, None
+        
+        rgb_mean = cfg.data_module.mean[0] if isinstance(cfg.data_module.mean, list) else cfg.data_module.mean
+        rgb_std = cfg.data_module.std[0] if isinstance(cfg.data_module.std, list) else cfg.data_module.std
+        self.transform_eval = EvalTransformWrapper(
+            self.transform_eval_rgb,
+            input_size=rgb_input_size or [224, 384],
+            mean=rgb_mean,
+            std=rgb_std,
+        )
 
     def setup(self, stage=None):
         if stage == "fit" or stage is None:
