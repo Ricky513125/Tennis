@@ -137,8 +137,22 @@ class TennisUnlabelCombinedMMDataModule(pl.LightningDataModule):
             def __init__(self, base_transform, input_size, mean, std):
                 self.base_transform = base_transform
                 self.input_size = input_size  # [224, 384]
-                self.mean = torch.tensor(mean).view(-1, 1, 1) if isinstance(mean, list) else mean
-                self.std = torch.tensor(std).view(-1, 1, 1) if isinstance(std, list) else std
+                # 确保 mean 和 std 是 PyTorch tensor
+                # 处理 omegaconf.ListConfig 或其他类型
+                if not isinstance(mean, torch.Tensor):
+                    if hasattr(mean, '__iter__') and not isinstance(mean, str):
+                        mean = list(mean)  # 转换为 Python list
+                    self.mean = torch.tensor(mean, dtype=torch.float32).view(-1, 1, 1)
+                else:
+                    self.mean = mean.view(-1, 1, 1)
+                
+                if not isinstance(std, torch.Tensor):
+                    if hasattr(std, '__iter__') and not isinstance(std, str):
+                        std = list(std)  # 转换为 Python list
+                    self.std = torch.tensor(std, dtype=torch.float32).view(-1, 1, 1)
+                else:
+                    self.std = std.view(-1, 1, 1)
+                
                 # 评估时只进行居中裁剪和归一化，不进行随机翻转
                 self.eval_transform = transforms.Compose([
                     ToTensor(),  # PIL Image 列表 -> [T, C, H, W]
@@ -147,7 +161,7 @@ class TennisUnlabelCombinedMMDataModule(pl.LightningDataModule):
             
             def _normalize_tensor(self, tensor):
                 # tensor: [T, C, H, W]
-                # mean/std: [C] -> [1, C, 1, 1]
+                # mean/std: [C, 1, 1] -> [1, C, 1, 1]
                 mean = self.mean.view(1, -1, 1, 1)
                 std = self.std.view(1, -1, 1, 1)
                 return (tensor - mean) / std
