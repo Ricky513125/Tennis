@@ -73,7 +73,65 @@ class TennisUnlabelCombinedMMDataModule(pl.LightningDataModule):
         # 创建一个包装类，使其兼容评估数据集的调用方式
         # TennisFewshotEvalDataset 期望输出格式: [T*C, H, W]
         import torch
-        from datamodule.utils.augmentation import ToTensor, VideoCenterCrop
+        from datamodule.utils.augmentation import ToTensor
+        from PIL import Image as PILImage
+        from torchvision import transforms
+        
+        class VideoCenterCrop:
+            """评估时使用的居中裁剪类（与训练时一致）"""
+            def __init__(self, size):
+                # size 可能是 [H, W] 列表或单个整数
+                if isinstance(size, (list, tuple)) and len(size) == 2:
+                    self.size = tuple(size)  # (H, W)
+                elif isinstance(size, int):
+                    self.size = (size, size)
+                else:
+                    self.size = (224, 384)  # 默认值
+                self.target_H, self.target_W = self.size
+            
+            def __call__(self, tensor):
+                # tensor: [T, C, H, W]
+                # 对每一帧分别应用 CenterCrop
+                T, C, H, W = tensor.shape
+                cropped_frames = []
+                
+                for t in range(T):
+                    frame = tensor[t]  # [C, H, W]
+                    
+                    # 如果尺寸已经匹配，直接返回
+                    if H == self.target_H and W == self.target_W:
+                        cropped_frames.append(frame)
+                        continue
+                    
+                    # 居中裁剪：计算裁剪起始位置
+                    if H != self.target_H:
+                        start_h = (H - self.target_H) // 2
+                        end_h = start_h + self.target_H
+                    else:
+                        start_h = 0
+                        end_h = H
+                    
+                    if W != self.target_W:
+                        start_w = (W - self.target_W) // 2
+                        end_w = start_w + self.target_W
+                    else:
+                        start_w = 0
+                        end_w = W
+                    
+                    # 执行裁剪: [C, H, W] -> [C, target_H, target_W]
+                    cropped_frame = frame[:, start_h:end_h, start_w:end_w]
+                    
+                    # 如果裁剪后尺寸仍不匹配（可能因为原始尺寸小于目标尺寸），进行 resize
+                    if cropped_frame.shape[1] != self.target_H or cropped_frame.shape[2] != self.target_W:
+                        # 转换为 PIL Image 进行 resize
+                        frame_pil = transforms.ToPILImage()(cropped_frame)
+                        cropped_frame = transforms.ToTensor()(
+                            frame_pil.resize((self.target_W, self.target_H), PILImage.BILINEAR)  # PIL 使用 (W, H)
+                        )
+                    
+                    cropped_frames.append(cropped_frame)
+                
+                return torch.stack(cropped_frames, dim=0)  # [T, C, H, W]
         
         class EvalTransformWrapper:
             def __init__(self, base_transform, input_size, mean, std):
@@ -82,10 +140,10 @@ class TennisUnlabelCombinedMMDataModule(pl.LightningDataModule):
                 self.mean = torch.tensor(mean).view(-1, 1, 1) if isinstance(mean, list) else mean
                 self.std = torch.tensor(std).view(-1, 1, 1) if isinstance(std, list) else std
                 # 评估时只进行居中裁剪和归一化，不进行随机翻转
-                self.eval_transform = torch.nn.Sequential(
+                self.eval_transform = transforms.Compose([
                     ToTensor(),  # PIL Image 列表 -> [T, C, H, W]
                     VideoCenterCrop(self.input_size),  # [T, C, H, W] -> [T, C, H, W] (居中裁剪到 224x384)
-                )
+                ])
             
             def _normalize_tensor(self, tensor):
                 # tensor: [T, C, H, W]
