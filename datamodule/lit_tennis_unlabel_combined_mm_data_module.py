@@ -2,11 +2,14 @@
 Tennis 数据集的多模态数据模块（RGB、Flow、Skeleton）
 用于多模态蒸馏训练
 """
+import logging
 import pytorch_lightning as pl
 import torch.distributed as dist
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import BatchSampler
+
+logger = logging.getLogger(__name__)
 
 from datamodule.dataset.tennis_unlabel_combined_multimodal_dataset import (
     TennisUnlabelCombinedMMDataset,
